@@ -468,12 +468,20 @@ function displayMetric() {
   return S.metric || 'Cohort';
 }
 
+function dataYears() {
+  const secs = allSecs();
+  if (!S.metric || !secs[S.metric]) return [];
+  return [...new Set(
+    Object.keys(secs[S.metric]).map(c => Math.floor(parseInt(c, 10) / 100))
+  )].sort((a, b) => a - b);
+}
+
 function yearSuffix() {
-  const yrs = [...S.years].sort();
+  const yrs = dataYears();
   if (!yrs.length) return '— Vintages';
   if (yrs.length === 1) return `— ${yrs[0]} Vintages`;
   if (yrs.length <= 4) return `— ${yrs.join(' · ')} Vintages`;
-  return '— Selected Vintages';
+  return `— ${yrs[0]}–${yrs[yrs.length - 1]} Vintages`;
 }
 
 function defaultName() {
@@ -486,8 +494,18 @@ function defaultName() {
 
 function fullTitle() {
   const nameEl = document.getElementById('chartName');
+  const suffixEl = document.getElementById('titleSuffix');
   const name = (nameEl && nameEl.value.trim()) || defaultName();
-  return `${name} ${yearSuffix()}`;
+  const suffix = (suffixEl && suffixEl.textContent.trim()) || yearSuffix();
+  return `${name} ${suffix}`;
+}
+
+/** Title updates only when source data / metric changes — not on year filters. */
+function syncTitleFromData() {
+  const nameEl = document.getElementById('chartName');
+  const suffixEl = document.getElementById('titleSuffix');
+  if (suffixEl) suffixEl.textContent = yearSuffix();
+  if (!S.nameManual && nameEl) nameEl.value = defaultName();
 }
 
 const dz = document.getElementById('dropZone');
@@ -662,6 +680,7 @@ function refresh() {
   rebuildYears();
   syncAsOfInput();
   updateMOB();
+  syncTitleFromData();
   draw();
 }
 
@@ -722,6 +741,7 @@ document.getElementById('metSel').addEventListener('change', e => {
   rebuildYears();
   syncAsOfInput();
   updateMOB();
+  syncTitleFromData();
   draw();
 });
 
@@ -877,7 +897,6 @@ function rebuildYears() {
       if (S.years.has(y)) {
         if (S.years.size > 1) S.years.delete(y);
       } else S.years.add(y);
-      S.nameManual = false;
       rebuildYears();
       draw();
     });
@@ -889,7 +908,6 @@ document.getElementById('yrAll').addEventListener('click', () => {
   if (!S.metric || !secs[S.metric]) return;
   const all = Object.keys(secs[S.metric]).map(c => Math.floor(parseInt(c, 10) / 100));
   S.years = new Set(all);
-  S.nameManual = false;
   rebuildYears();
   draw();
 });
@@ -898,7 +916,6 @@ document.getElementById('yrClear').addEventListener('click', () => {
   const yrs = [...S.years].sort();
   if (yrs.length) {
     S.years = new Set([yrs[yrs.length - 1]]);
-    S.nameManual = false;
     rebuildYears();
     draw();
   }
@@ -919,19 +936,16 @@ function updateMOB() {
 
 document.querySelectorAll('input[name="period"]').forEach(r => r.addEventListener('change', () => {
   S.period = r.value;
-  S.nameManual = false;
   draw();
 }));
 document.querySelectorAll('input[name="view"]').forEach(r => r.addEventListener('change', () => {
   S.view = r.value;
   document.getElementById('mobSec').style.display = r.value === 'calendar' ? 'block' : 'none';
-  S.nameManual = false;
   draw();
 }));
 document.getElementById('mobRange').addEventListener('input', e => {
   S.mob = parseInt(e.target.value, 10);
   document.getElementById('mobVal').textContent = S.mob;
-  S.nameManual = false;
   draw();
 });
 document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click', () => {
@@ -946,7 +960,6 @@ document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click',
     if (id === 'makeCumul') {
       const hint = document.getElementById('cumulHint');
       if (hint) hint.style.display = document.getElementById('makeCumul').checked ? 'block' : 'none';
-      S.nameManual = false;
     }
     draw();
   });
@@ -972,8 +985,6 @@ document.getElementById('asOfAuto').addEventListener('click', () => {
 
 document.getElementById('chartName').addEventListener('input', () => {
   S.nameManual = true;
-  const suffixEl = document.getElementById('titleSuffix');
-  if (suffixEl) suffixEl.textContent = yearSuffix();
   if (S.chart) {
     S.chart.options.plugins.title.text = fullTitle();
     S.chart.update('none');
@@ -1354,11 +1365,6 @@ function draw() {
   ca.style.display = 'flex';
   S.lastLabels = labels;
   S.lastDatasets = datasets;
-
-  const nameEl = document.getElementById('chartName');
-  const suffixEl = document.getElementById('titleSuffix');
-  if (suffixEl) suffixEl.textContent = yearSuffix();
-  if (!S.nameManual) nameEl.value = defaultName();
 
   const nLabel = S.period === 'monthly' ? 'vintage' : S.period === 'quarterly' ? 'quarter' : 'year';
   const fmt = activeFmt();
