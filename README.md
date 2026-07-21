@@ -6,7 +6,7 @@ Browser-based cohort chart tool for the team. Upload or paste TSV/CSV, filter vi
 
 ## Use it
 
-1. Open the site (GitHub Pages URL or your custom domain)
+1. Open **https://alan-solache.github.io/cohort-analytics-web/** (or your custom domain behind Cloudflare Zero Trust — see `ZERO_TRUST.md`)
 2. Drop a TSV/CSV or paste from Excel
 3. Toggle years, trim to max life, set Y range, edit the title name
 4. Download or copy PNG
