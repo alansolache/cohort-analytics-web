@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stori · Cohort Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --p:#003A40;--pl:#B0D8DC;--border:#D6E2E4;--muted:#6B8B8E;
+  --surf:#FFFFFF;--surf2:#EEF4F5;--bg:#F4F7F8;--ink:#1A2B2D;--r:8px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+header{background:var(--p);color:white;padding:12px 22px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.hdr-title{font-size:15px;font-weight:600;letter-spacing:-.2px;}
+.hdr-sub{font-size:11px;opacity:.65;margin-top:1px;}
+#hdrChip{margin-left:auto;display:none;background:rgba(255,255,255,.15);border-radius:20px;padding:3px 12px;font-size:11px;}
+.main{display:flex;flex:1;overflow:hidden;}
+.sidebar{width:260px;background:var(--surf);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;flex-shrink:0;}
+.chart-area{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px;}
+.sec-label{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+#dropZone{border:1.5px dashed var(--border);border-radius:var(--r);padding:14px 10px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;}
+#dropZone:hover,#dropZone.over{border-color:var(--p);background:var(--surf2);}
+#fileIn{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;}
+.dz-label{font-size:12px;font-weight:600;color:var(--p);}
+.dz-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.chip{display:flex;align-items:center;gap:5px;background:var(--surf2);border-radius:var(--r);padding:5px 9px;font-size:11px;color:var(--p);font-weight:500;}
+.chip .rm{margin-left:auto;cursor:pointer;opacity:.5;font-size:13px;line-height:1;border:0;background:none;color:inherit;padding:0;}
+.chip .rm:hover{opacity:1;}
+select,input[type=text],input[type=number],input[type=color]{width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;color:var(--ink);background:var(--surf);outline:none;}
+select:focus,input[type=text]:focus,input[type=number]:focus{border-color:var(--p);}
+input[type=color]{padding:2px;height:30px;cursor:pointer;}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.field:last-child{margin-bottom:0;}
+.field-label{font-size:11px;color:var(--muted);}
+.radio-group,.check-group{display:flex;flex-direction:column;gap:5px;}
+.radio-group label,.check-group label{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;}
+.radio-group input,.check-group input{accent-color:var(--p);width:13px;height:13px;}
+.mob-row{display:flex;align-items:center;gap:8px;margin-top:9px;}
+.mob-row input[type=range]{flex:1;accent-color:var(--p);}
+.mob-val{font-size:12px;font-weight:600;color:var(--p);min-width:22px;text-align:right;}
+.ctype-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.ctype{padding:7px 4px;border:1px solid var(--border);border-radius:var(--r);background:transparent;font-family:inherit;font-size:11px;color:var(--muted);cursor:pointer;text-align:center;transition:all .15s;}
+.ctype:hover{border-color:var(--pl);color:var(--p);}
+.ctype.active{border-color:var(--p);background:var(--p);color:white;}
+.yr-tags{display:flex;flex-wrap:wrap;gap:5px;}
+.yr-tag{padding:4px 10px;border-radius:20px;border:1px solid var(--border);font-size:11px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s;background:transparent;font-family:inherit;}
+.yr-tag:hover{border-color:var(--p);}
+.yr-tag.on{border-color:var(--p);background:var(--p);color:white;}
+.yr-actions{display:flex;gap:8px;margin-bottom:6px;}
+.yr-actions button{border:0;background:none;padding:0;font-size:11px;color:var(--p);cursor:pointer;font-family:inherit;font-weight:500;}
+.yr-actions button:hover{text-decoration:underline;}
+.divider{height:1px;background:var(--border);margin:0 -16px;}
+.stat-bar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-shrink:0;flex-wrap:wrap;}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0;flex-wrap:wrap;}
+.toolbar label{font-size:11px;color:var(--muted);}
+.toolbar input[type=number]{width:68px;}
+.toolbar input[type=color]{width:36px;height:28px;}
+.dl-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--p);border-radius:6px;background:var(--p);color:white;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto;transition:opacity .15s;}
+.dl-btn:hover{opacity:.85;}
+.dl-btn.secondary{background:transparent;color:var(--p);}
+.title-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-shrink:0;}
+.title-row input{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--p);border-color:transparent;background:transparent;padding:4px 6px;}
+.title-row input:hover,.title-row input:focus{border-color:var(--border);background:var(--surf);}
+.title-suffix{flex-shrink:0;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;padding-right:4px;}
+.canvas-wrap{flex:1;min-height:0;position:relative;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:8px;}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:var(--muted);}
+.empty h3{font-size:14px;font-weight:600;color:var(--ink);}
+.empty p{font-size:12px;text-align:center;max-width:280px;line-height:1.5;}
+.empty .hint{background:var(--surf2);padding:8px 14px;border-radius:var(--r);font-size:11px;line-height:1.6;color:var(--muted);}
+.bg-row{display:flex;gap:6px;align-items:center;}
+.bg-row select{flex:1;}
+.bg-row input[type=color]{width:36px;flex:0 0 36px;}
+.data-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;}
+.data-actions button{padding:7px 6px;border:1px solid var(--border);border-radius:var(--r);background:transparent;font-family:inherit;font-size:11px;font-weight:500;color:var(--p);cursor:pointer;transition:all .15s;}
+.data-actions button:hover{border-color:var(--p);background:var(--surf2);}
+#pastePanel{display:none;margin-top:8px;flex-direction:column;gap:6px;}
+#pastePanel.open{display:flex;}
+#pasteArea{width:100%;min-height:110px;resize:vertical;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px;border:1px solid var(--border);border-radius:var(--r);outline:none;color:var(--ink);background:var(--surf);line-height:1.4;}
+#pasteArea:focus{border-color:var(--p);}
+.paste-row{display:flex;gap:6px;}
+.paste-row button{flex:1;padding:6px 8px;border:1px solid var(--p);border-radius:6px;background:var(--p);color:white;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.paste-row button.ghost{background:transparent;color:var(--p);}
+.paste-hint{font-size:10px;color:var(--muted);line-height:1.4;}
+</style>
+</head>
+<body>
+<header>
+  <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+  <div>
+    <div class="hdr-title">Stori · Cohort Analytics</div>
+    <div class="hdr-sub">Upload or paste TSV / CSV — filter vintages, style, and download for slides</div>
+  </div>
+  <div id="hdrChip"></div>
+</header>
+
+<div class="main">
+  <aside class="sidebar">
+    <div>
+      <div class="sec-label">Data</div>
+      <div id="dropZone">
+        <input type="file" id="fileIn" accept=".tsv,.csv,.txt" multiple>
+        <div class="dz-label">Drop TSV / CSV here</div>
+        <div class="dz-sub">or click to browse · multi-file OK</div>
+      </div>
+      <div class="data-actions">
+        <button type="button" id="pasteToggle">Paste data</button>
+        <button type="button" id="copyDataBtn">Copy data</button>
+      </div>
+      <div id="pastePanel">
+        <textarea id="pasteArea" placeholder="Paste from Excel / Sheets here (Ctrl/Cmd+V)&#10;&#10;Jun-24&#9;1.2%&#9;2.1%&#9;…&#10;Jul-24&#9;0.8%&#9;1.5%&#9;…"></textarea>
+        <div class="paste-row">
+          <button type="button" class="ghost" id="pasteFromClip">Paste clipboard</button>
+          <button type="button" id="pasteLoad">Load</button>
+        </div>
+        <div class="paste-hint">Tip: select cells in Excel, copy, then Paste clipboard or Cmd/Ctrl+V into the box.</div>
+      </div>
+      <div id="chips" style="margin-top:7px;display:flex;flex-direction:column;gap:4px;"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="metSec" style="display:none;">
+      <div class="sec-label">Metric</div>
+      <select id="metSel"></select>
+    </div>
+
+    <div>
+      <div class="sec-label">Period</div>
+      <div class="radio-group">
+        <label><input type="radio" name="period" value="monthly" checked> Monthly cohorts</label>
+        <label><input type="radio" name="period" value="quarterly"> Quarterly</label>
+        <label><input type="radio" name="period" value="annual"> Annual (pool avg)</label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">View</div>
+      <div class="radio-group">
+        <label><input type="radio" name="view" value="cohort" checked> Cohort (months on book)</label>
+        <label><input type="radio" name="view" value="calendar"> Calendar (by vintage)</label>
+      </div>
+      <div id="mobSec" style="display:none;">
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:4px;">Month on book</div>
+        <div class="mob-row">
+          <input type="range" id="mobRange" min="1" max="24" value="12" step="1">
+          <span id="mobVal" class="mob-val">12</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">Chart type</div>
+      <div class="ctype-grid">
+        <button type="button" class="ctype active" data-t="line">Line</button>
+        <button type="button" class="ctype" data-t="bar">Bar</button>
+        <button type="button" class="ctype" data-t="area">Area</button>
+        <button type="button" class="ctype" data-t="scatter">Scatter</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="yrSec" style="display:none;">
+      <div class="sec-label">Years</div>
+      <div class="yr-actions">
+        <button type="button" id="yrAll">All</button>
+        <button type="button" id="yrClear">Clear</button>
+      </div>
+      <div class="yr-tags" id="yrTags"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">As of (EOM)</div>
+      <div class="check-group" style="margin-bottom:8px;">
+        <label><input type="checkbox" id="trimLife" checked> Trim to max life</label>
+        <label><input type="checkbox" id="makeCumul"> Make cumulative</label>
+      </div>
+      <div class="paste-hint" id="cumulHint" style="margin-bottom:8px;display:none;">Running sum along months on book (period → cumulative).</div>
+      <div class="field">
+        <span class="field-label">Data as of end of</span>
+        <div class="bg-row">
+          <input type="month" id="asOfMonth" style="flex:1;">
+          <button type="button" id="asOfAuto" class="yr-tag" style="border-radius:6px;padding:6px 10px;" title="Infer from data">Auto</button>
+        </div>
+      </div>
+      <div class="paste-hint" id="asOfHint">April vintage → 1 point, March → 2, etc.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">Display</div>
+      <div class="field">
+        <span class="field-label">Y-axis format</span>
+        <select id="fmtSel">
+          <option value="auto">Auto-detect</option>
+          <option value="pct">Percent (%)</option>
+          <option value="currency">Currency ($ / k / M)</option>
+          <option value="count">Count (k / M)</option>
+          <option value="raw">Raw number</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="field-label">Y-axis label</span>
+        <input type="text" id="yLabel" placeholder="Auto from format">
+      </div>
+      <div class="field">
+        <span class="field-label">Y-axis range</span>
+        <div class="bg-row">
+          <input type="number" id="yMin" placeholder="Min" step="any" title="Y min (blank = auto)">
+          <input type="number" id="yMax" placeholder="Max" step="any" title="Y max (blank = auto)">
+        </div>
+      </div>
+      <div class="check-group">
+        <label><input type="checkbox" id="showLegend" checked> Show legend</label>
+        <label><input type="checkbox" id="showAxes" checked> Show axes</label>
+        <label><input type="checkbox" id="showGrid" checked> Show grid</label>
+        <label><input type="checkbox" id="showPoints"> Show all points</label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="sec-label">Export</div>
+      <div class="field">
+        <span class="field-label">Background</span>
+        <div class="bg-row">
+          <select id="bgMode">
+            <option value="white">White</option>
+            <option value="transparent">Transparent</option>
+            <option value="custom">Custom color</option>
+          </select>
+          <input type="color" id="bgColor" value="#FFFFFF" disabled title="Custom background">
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="chart-area">
+    <div class="empty" id="emptyState">
+      <h3>Upload or paste data to get started</h3>
+      <p>Rows = vintages (e.g. Jun-24), columns = months on book</p>
+      <p class="hint">
+        Drop a <strong>TSV/CSV</strong>, or use <strong>Paste data</strong> from Excel.
+        Toggle years, edit the title, then download a PNG for slides.
+      </p>
+    </div>
+    <div id="chartArea" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+      <div class="stat-bar" id="statBar"></div>
+      <div class="toolbar">
+        <label>W</label>
+        <input type="number" id="dlW" value="1200" min="400" max="4000" step="100">
+        <label>H</label>
+        <input type="number" id="dlH" value="675" min="300" max="3000" step="100">
+        <button type="button" class="dl-btn secondary" id="copyDataTb">Copy data</button>
+        <button type="button" class="dl-btn secondary" id="copyBtn">Copy PNG</button>
+        <button type="button" class="dl-btn" id="dlBtn">Download PNG</button>
+      </div>
+      <div class="title-row">
+        <input type="text" id="chartName" placeholder="Chart name (editable)">
+        <span class="title-suffix" id="titleSuffix">— Vintages</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="cvs"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MO = {};
+MN.forEach((m, i) => { MO[m] = i + 1; });
+
+const S = {
+  files: [],
+  metric: null,
+  period: 'monthly',
+  view: 'cohort',
+  ctype: 'line',
+  mob: 12,
+  years: new Set(),
+  chart: null,
+  lastLabels: null,
+  lastDatasets: null,
+  nameManual: false,
+  detectedFmt: 'pct',
+  hasPct: false,
+  asOf: null,
+  asOfManual: false,
+};
+
+function isCL(s) {
+  if (!s || !s.includes('-')) return false;
+  const p = s.split('-');
+  return p.length === 2 && MO[p[0]] !== undefined && /^\d{2}$/.test(p[1]);
+}
+
+function splitLine(line, delim) {
+  if (delim === '\t') return line.split('\t');
+  if (delim === 'ws') return line.trim().split(/\s+/).filter(Boolean);
+  const result = [];
+  let inQ = false, cur = '';
+  for (const ch of line) {
+    if (ch === '"') inQ = !inQ;
+    else if (ch === delim && !inQ) { result.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+function detectDelim(text) {
+  const sample = text.split('\n').filter(l => l.trim()).slice(0, 8).join('\n');
+  // Prefer tabs whenever present. Never let thousand separators (86,740,300)
+  // outvote tabs and break the paste.
+  if (sample.includes('\t')) return '\t';
+  if (/\d,\d{3}/.test(sample)) return 'ws';
+  const tabs = (sample.match(/\t/g) || []).length;
+  const commas = (sample.match(/,/g) || []).length;
+  return tabs >= commas ? '\t' : ',';
+}
+
+function parseCell(v) {
+  const raw = String(v).trim().replace(/^"|"$/g, '');
+  if (raw === '') return { n: null, pct: false };
+  const pct = raw.includes('%');
+  // Strip currency symbols and thousand separators
+  const x = raw.replace(/%/g, '').replace(/[$\s]/g, '').replace(/,/g, '');
+  const n = parseFloat(x);
+  return { n: Number.isFinite(n) ? n : null, pct };
+}
+
+function parseFile(text) {
+  const delim = detectDelim(text);
+  const lines = text.split('\n').map(l => l.trimEnd());
+  const secs = {};
+  let cur = 'Data';
+  let hasPct = false;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const pts = splitLine(line, delim);
+    const f = pts[0].trim().replace(/^"|"$/g, '');
+    if (!f) continue;
+    if (!isCL(f)) {
+      // Metric / section headers (e.g. "DQ 90+\t1\t2\t3" or "Gross Profit\t1\t2")
+      cur = f;
+      if (!secs[cur]) secs[cur] = {};
+      continue;
+    }
+    if (!secs[cur]) secs[cur] = {};
+    const [m, y] = f.split('-');
+    const c = (2000 + parseInt(y, 10)) * 100 + MO[m];
+    secs[cur][c] = pts.slice(1).map(v => {
+      const { n, pct } = parseCell(v);
+      if (pct) hasPct = true;
+      return n;
+    });
+  }
+  for (const k of Object.keys(secs)) {
+    if (!Object.keys(secs[k]).length) delete secs[k];
+  }
+  return { secs, hasPct };
+}
+
+function colorFor(i, n) {
+  const t = n > 1 ? i / (n - 1) : 1;
+  const r = Math.round(0xB0 + t * (0x00 - 0xB0));
+  const g = Math.round(0xD8 + t * (0x3A - 0xD8));
+  const b = Math.round(0xDC + t * (0x40 - 0xDC));
+  return { s: `rgb(${r},${g},${b})`, a: `rgba(${r},${g},${b},0.18)` };
+}
+
+function collectValues(cohorts) {
+  const out = [];
+  for (const [, v] of cohorts) {
+    for (const x of v) {
+      if (x !== null && x !== undefined && !Number.isNaN(x)) out.push(x);
+    }
+  }
+  return out;
+}
+
+function detectFormat(cohorts, hasPct) {
+  if (hasPct) return 'pct';
+  const vals = collectValues(cohorts);
+  if (!vals.length) return 'pct';
+  const maxAbs = Math.max(...vals.map(Math.abs));
+  const name = (S.metric || '').toLowerCase();
+  if (/margin|dq|rate|%|pct|payback/.test(name) && maxAbs <= 200) return 'pct';
+  if (/gross|profit|revenue|arpac|usd|mxn|balance|principal|volume/.test(name) || maxAbs >= 1000) {
+    if (/customer|account|count|open/.test(name) && !/profit|revenue|balance|principal|volume|arpac/.test(name)) {
+      return 'count';
+    }
+    if (/customer|account|count|open/.test(name)) return 'count';
+    return 'currency';
+  }
+  if (maxAbs <= 100 && vals.every(v => v >= -5 && v <= 150)) return 'pct';
+  return 'raw';
+}
+
+function activeFmt() {
+  const sel = document.getElementById('fmtSel').value;
+  return sel === 'auto' ? S.detectedFmt : sel;
+}
+
+function fmtValue(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '';
+  const f = activeFmt();
+  const a = Math.abs(v);
+  if (f === 'pct') return `${v.toFixed(1)}%`;
+  if (f === 'currency') {
+    if (a >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+    if (a >= 1_000) return `$${(v / 1_000).toFixed(0)}k`;
+    return `$${v.toFixed(0)}`;
+  }
+  if (f === 'count') {
+    if (a >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+    if (a >= 1_000) return `${(v / 1_000).toFixed(0)}k`;
+    return `${v.toFixed(0)}`;
+  }
+  if (a >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return v.toFixed(2);
+}
+
+function defaultYLabel() {
+  const f = activeFmt();
+  if (f === 'pct') return '%';
+  if (f === 'currency') return 'Amount';
+  if (f === 'count') return 'Count';
+  return 'Value';
+}
+
+function displayMetric() {
+  if (S.metric && S.metric !== 'Data') return S.metric;
+  if (S.files.length === 1) {
+    return S.files[0].name.replace(/\.(tsv|csv|txt)$/i, '').replace(/[_-]+/g, ' ');
+  }
+  return S.metric || 'Cohort';
+}
+
+function yearSuffix() {
+  const yrs = [...S.years].sort();
+  if (!yrs.length) return '— Vintages';
+  if (yrs.length === 1) return `— ${yrs[0]} Vintages`;
+  if (yrs.length <= 4) return `— ${yrs.join(' · ')} Vintages`;
+  return '— Selected Vintages';
+}
+
+function defaultName() {
+  const metric = displayMetric();
+  const cumul = document.getElementById('makeCumul')?.checked ? 'Cumulative ' : '';
+  if (S.view === 'calendar') return `${cumul}${metric} at MOB ${S.mob}`;
+  const period = S.period === 'monthly' ? 'by Cohort' : S.period === 'quarterly' ? 'by Quarter' : 'by Vintage Year';
+  return `${cumul}${metric} ${period}`;
+}
+
+function fullTitle() {
+  const nameEl = document.getElementById('chartName');
+  const name = (nameEl && nameEl.value.trim()) || defaultName();
+  return `${name} ${yearSuffix()}`;
+}
+
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('fileIn');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('over');
+  [...e.dataTransfer.files].forEach(loadF);
+});
+fi.addEventListener('change', () => { [...fi.files].forEach(loadF); fi.value = ''; });
+
+function loadText(name, text) {
+  const cleaned = String(text || '').replace(/^\uFEFF/, '');
+  const { secs, hasPct } = parseFile(cleaned);
+  if (!Object.keys(secs).length) {
+    alert('No cohort data found.\n\nExpected rows like "Jun-24" with numeric values in columns.');
+    return false;
+  }
+  S.files.push({ name, secs, hasPct });
+  S.nameManual = false;
+  S.asOfManual = false;
+  refresh();
+  return true;
+}
+
+function loadF(file) {
+  const r = new FileReader();
+  r.onload = e => loadText(file.name, e.target.result);
+  r.readAsText(file);
+}
+
+const pastePanel = document.getElementById('pastePanel');
+const pasteArea = document.getElementById('pasteArea');
+document.getElementById('pasteToggle').addEventListener('click', () => {
+  const open = pastePanel.classList.toggle('open');
+  if (open) {
+    pasteArea.focus();
+  }
+});
+
+document.getElementById('pasteLoad').addEventListener('click', () => {
+  const text = pasteArea.value.trim();
+  if (!text) {
+    alert('Paste some cohort rows first (from Excel or a TSV).');
+    return;
+  }
+  const name = `Pasted ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  if (loadText(name, text)) {
+    pasteArea.value = '';
+    pastePanel.classList.remove('open');
+  }
+});
+
+document.getElementById('pasteFromClip').addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) {
+      alert('Clipboard is empty.');
+      return;
+    }
+    pasteArea.value = text;
+    pastePanel.classList.add('open');
+    pasteArea.focus();
+  } catch (err) {
+    pastePanel.classList.add('open');
+    pasteArea.focus();
+    alert('Could not read clipboard automatically. Paste into the box with Cmd/Ctrl+V, then click Load.');
+  }
+});
+
+function looksLikeCohortPaste(text) {
+  if (!text || text.length < 8) return false;
+  const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 12);
+  let hits = 0;
+  for (const line of lines) {
+    const first = line.split(/\t|,/)[0].trim().replace(/^"|"$/g, '');
+    if (isCL(first)) hits += 1;
+  }
+  return hits >= 1;
+}
+
+document.addEventListener('paste', e => {
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+  if (tag === 'textarea' || tag === 'input') return;
+  const text = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (!looksLikeCohortPaste(text)) return;
+  e.preventDefault();
+  const name = `Pasted ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  loadText(name, text);
+});
+
+function metricToTsv(filterYears) {
+  const cohorts = getCohorts();
+  if (!cohorts.length) return null;
+  let rows = cohorts;
+  if (!filterYears) {
+    const secs = allSecs();
+    if (!S.metric || !secs[S.metric]) return null;
+    rows = Object.entries(secs[S.metric])
+      .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+      .map(([c, v]) => [c, transformSeries(v, parseInt(c, 10))]);
+  }
+  const maxLen = Math.max(0, ...rows.map(([, v]) => observedLen(v)));
+  if (!maxLen) return null;
+  const header = [S.metric === 'Data' ? displayMetric() : S.metric];
+  for (let i = 1; i <= maxLen; i++) header.push(String(i));
+  const lines = [header.join('\t')];
+  const fmt = activeFmt();
+  for (const [c, vals] of rows) {
+    const ci = parseInt(c, 10);
+    const yr = Math.floor(ci / 100);
+    const mo = ci % 100;
+    const label = `${MN[mo - 1]}-${String(yr).slice(2)}`;
+    const row = [label];
+    const trimmed = vals.slice(0, maxLen);
+    for (let i = 0; i < maxLen; i++) {
+      const v = trimmed[i];
+      if (v === null || v === undefined || Number.isNaN(v)) {
+        row.push('');
+      } else if (fmt === 'pct') {
+        row.push(`${Number(v).toFixed(2)}%`);
+      } else {
+        row.push(String(v));
+      }
+    }
+    lines.push(row.join('\t'));
+  }
+  return lines.join('\n');
+}
+
+async function copyDataTsv() {
+  const tsv = metricToTsv(true);
+  if (!tsv) {
+    alert('Load data first, then copy.');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(tsv);
+    flashCopyBtns();
+  } catch (err) {
+    // Fallback: select in a temp area
+    pastePanel.classList.add('open');
+    pasteArea.value = tsv;
+    pasteArea.select();
+    try {
+      document.execCommand('copy');
+      flashCopyBtns();
+    } catch (e2) {
+      alert('Copied into the paste box — select all and Cmd/Ctrl+C if needed.');
+    }
+  }
+}
+
+function flashCopyBtns() {
+  for (const id of ['copyDataBtn', 'copyDataTb']) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    const prev = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = prev; }, 1200);
+  }
+}
+
+document.getElementById('copyDataBtn').addEventListener('click', () => { copyDataTsv(); });
+document.getElementById('copyDataTb').addEventListener('click', () => { copyDataTsv(); });
+
+function refresh() {
+  renderChips();
+  rebuildMetrics();
+  rebuildYears();
+  syncAsOfInput();
+  updateMOB();
+  draw();
+}
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = S.files.map((f, i) => `
+    <div class="chip">
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name)}</span>
+      <button type="button" class="rm" data-i="${i}" aria-label="Remove">✕</button>
+    </div>`).join('');
+  document.querySelectorAll('.chip .rm').forEach(btn => {
+    btn.addEventListener('click', () => {
+      S.files.splice(parseInt(btn.dataset.i, 10), 1);
+      S.nameManual = false;
+      refresh();
+    });
+  });
+  const hc = document.getElementById('hdrChip');
+  if (S.files.length) {
+    hc.style.display = 'block';
+    hc.textContent = `${S.files.length} file${S.files.length > 1 ? 's' : ''} loaded`;
+  } else hc.style.display = 'none';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function allSecs() {
+  const out = {};
+  S.files.forEach(f => Object.assign(out, f.secs));
+  return out;
+}
+
+function anyHasPct() {
+  return S.files.some(f => f.hasPct);
+}
+
+function rebuildMetrics() {
+  const secs = allSecs();
+  const keys = Object.keys(secs);
+  const ms = document.getElementById('metSec');
+  const sel = document.getElementById('metSel');
+  if (keys.length > 1) {
+    ms.style.display = 'block';
+    sel.innerHTML = keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    if (!S.metric || !keys.includes(S.metric)) S.metric = keys[0];
+    sel.value = S.metric;
+  } else {
+    ms.style.display = 'none';
+    S.metric = keys[0] || null;
+  }
+}
+
+document.getElementById('metSel').addEventListener('change', e => {
+  S.metric = e.target.value;
+  S.nameManual = false;
+  if (!S.asOfManual) S.asOf = null;
+  rebuildYears();
+  syncAsOfInput();
+  updateMOB();
+  draw();
+});
+
+function getCohorts() {
+  const secs = allSecs();
+  if (!S.metric || !secs[S.metric]) return [];
+  return Object.entries(secs[S.metric])
+    .filter(([c]) => S.years.has(Math.floor(parseInt(c, 10) / 100)))
+    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+    .map(([c, v]) => [c, transformSeries(v, parseInt(c, 10))])
+    .filter(([, v]) => v.some(x => x !== null && x !== undefined && !Number.isNaN(x)));
+}
+
+function makeCumulative(vals) {
+  let run = 0;
+  let started = false;
+  return vals.map(v => {
+    if (v === null || v === undefined || Number.isNaN(v)) {
+      return started ? run : null;
+    }
+    started = true;
+    run += v;
+    return run;
+  });
+}
+
+function transformSeries(vals, cohort) {
+  let out = applyMaxLife(vals, cohort);
+  if (document.getElementById('makeCumul').checked) out = makeCumulative(out);
+  return out;
+}
+
+function yyyymmToIndex(c) {
+  return Math.floor(c / 100) * 12 + (c % 100);
+}
+
+function indexToYyyymm(idx) {
+  const mo = ((idx - 1) % 12) + 1;
+  const yr = Math.floor((idx - 1) / 12);
+  return yr * 100 + mo;
+}
+
+function maxLifeFor(cohort, asOf) {
+  if (!asOf) return Infinity;
+  return yyyymmToIndex(asOf) - yyyymmToIndex(cohort) + 1;
+}
+
+function observedLen(vals) {
+  const v = [...vals];
+  // Drop trailing empty / zero
+  while (v.length && (v[v.length - 1] === null || v[v.length - 1] === undefined || Number.isNaN(v[v.length - 1]) || v[v.length - 1] === 0)) {
+    v.pop();
+  }
+  // Drop flat padded tails (source repeats last real value) — common in statement matrices
+  while (v.length >= 2 && v[v.length - 1] === v[v.length - 2]) {
+    v.pop();
+  }
+  return v.length;
+}
+
+function inferAsOfFromMetric() {
+  const secs = allSecs();
+  if (!S.metric || !secs[S.metric]) return null;
+  const entries = Object.entries(secs[S.metric]);
+  if (!entries.length) return null;
+
+  // If every cohort is padded to the same width (full statement matrix),
+  // as-of is simply the newest vintage month.
+  const rawLens = entries.map(([, vals]) => {
+    let n = vals.length;
+    while (n > 0 && (vals[n - 1] === null || vals[n - 1] === undefined || Number.isNaN(vals[n - 1]))) n--;
+    return n;
+  }).filter(n => n > 0);
+  const allSamePad = rawLens.length > 1 && rawLens.every(n => n === rawLens[0]);
+  if (allSamePad) {
+    const newest = Math.max(...entries.map(([c]) => parseInt(c, 10)));
+    return newest;
+  }
+
+  let maxIdx = 0;
+  for (const [ck, vals] of entries) {
+    const c = parseInt(ck, 10);
+    const len = observedLen(vals);
+    if (!len) continue;
+    const endIdx = yyyymmToIndex(c) + len - 1;
+    if (endIdx > maxIdx) maxIdx = endIdx;
+  }
+  return maxIdx > 0 ? indexToYyyymm(maxIdx) : null;
+}
+
+function yyyymmToMonthInput(c) {
+  if (!c) return '';
+  const yr = Math.floor(c / 100);
+  const mo = String(c % 100).padStart(2, '0');
+  return `${yr}-${mo}`;
+}
+
+function monthInputToYyyymm(s) {
+  if (!s || !/^\d{4}-\d{2}$/.test(s)) return null;
+  const [y, m] = s.split('-').map(Number);
+  return y * 100 + m;
+}
+
+function formatAsOf(c) {
+  if (!c) return '';
+  return `${MN[(c % 100) - 1]}-${String(Math.floor(c / 100)).slice(2)}`;
+}
+
+function syncAsOfInput() {
+  const el = document.getElementById('asOfMonth');
+  if (!el) return;
+  if (!S.asOfManual) {
+    S.asOf = inferAsOfFromMetric();
+  }
+  el.value = yyyymmToMonthInput(S.asOf);
+  const hint = document.getElementById('asOfHint');
+  if (hint) {
+    if (S.asOf) {
+      hint.textContent = `As of EOM ${formatAsOf(S.asOf)}: that month’s vintage → 1 pt, prior month → 2, etc.`;
+    } else {
+      hint.textContent = 'April vintage → 1 point, March → 2, etc.';
+    }
+  }
+}
+
+function applyMaxLife(vals, cohort) {
+  if (!document.getElementById('trimLife').checked || !S.asOf) return vals;
+  const life = maxLifeFor(cohort, S.asOf);
+  if (life <= 0) return [];
+  return vals.slice(0, life);
+}
+
+function rebuildYears() {
+  const secs = allSecs();
+  if (!S.metric || !secs[S.metric]) {
+    document.getElementById('yrSec').style.display = 'none';
+    return;
+  }
+  const all = Object.keys(secs[S.metric]).map(c => Math.floor(parseInt(c, 10) / 100));
+  const yrs = [...new Set(all)].sort();
+  const ns = new Set(yrs.filter(y => S.years.size === 0 || S.years.has(y)));
+  if (ns.size === 0) yrs.forEach(y => ns.add(y));
+  S.years = ns;
+  const sec = document.getElementById('yrSec');
+  const tags = document.getElementById('yrTags');
+  sec.style.display = yrs.length > 0 ? 'block' : 'none';
+  tags.innerHTML = yrs.map(y =>
+    `<button type="button" class="yr-tag${S.years.has(y) ? ' on' : ''}" data-y="${y}">${y}</button>`
+  ).join('');
+  tags.querySelectorAll('.yr-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const y = parseInt(btn.dataset.y, 10);
+      if (S.years.has(y)) {
+        if (S.years.size > 1) S.years.delete(y);
+      } else S.years.add(y);
+      S.nameManual = false;
+      rebuildYears();
+      draw();
+    });
+  });
+}
+
+document.getElementById('yrAll').addEventListener('click', () => {
+  const secs = allSecs();
+  if (!S.metric || !secs[S.metric]) return;
+  const all = Object.keys(secs[S.metric]).map(c => Math.floor(parseInt(c, 10) / 100));
+  S.years = new Set(all);
+  S.nameManual = false;
+  rebuildYears();
+  draw();
+});
+
+document.getElementById('yrClear').addEventListener('click', () => {
+  const yrs = [...S.years].sort();
+  if (yrs.length) {
+    S.years = new Set([yrs[yrs.length - 1]]);
+    S.nameManual = false;
+    rebuildYears();
+    draw();
+  }
+});
+
+function updateMOB() {
+  const cohorts = getCohorts();
+  const lengths = cohorts.length
+    ? cohorts.map(([, v]) => Math.max(1, observedLen(v)))
+    : [1];
+  const mx = Math.max(...lengths);
+  const r = document.getElementById('mobRange');
+  r.max = mx;
+  S.mob = Math.min(S.mob, mx);
+  r.value = S.mob;
+  document.getElementById('mobVal').textContent = S.mob;
+}
+
+document.querySelectorAll('input[name="period"]').forEach(r => r.addEventListener('change', () => {
+  S.period = r.value;
+  S.nameManual = false;
+  draw();
+}));
+document.querySelectorAll('input[name="view"]').forEach(r => r.addEventListener('change', () => {
+  S.view = r.value;
+  document.getElementById('mobSec').style.display = r.value === 'calendar' ? 'block' : 'none';
+  S.nameManual = false;
+  draw();
+}));
+document.getElementById('mobRange').addEventListener('input', e => {
+  S.mob = parseInt(e.target.value, 10);
+  document.getElementById('mobVal').textContent = S.mob;
+  S.nameManual = false;
+  draw();
+});
+document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click', () => {
+  S.ctype = btn.dataset.t;
+  document.querySelectorAll('.ctype').forEach(b => b.classList.toggle('active', b === btn));
+  draw();
+}));
+
+['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'yLabel', 'yMin', 'yMax', 'trimLife', 'makeCumul'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (id === 'trimLife' || id === 'makeCumul') updateMOB();
+    if (id === 'makeCumul') {
+      const hint = document.getElementById('cumulHint');
+      if (hint) hint.style.display = document.getElementById('makeCumul').checked ? 'block' : 'none';
+      S.nameManual = false;
+    }
+    draw();
+  });
+  document.getElementById(id).addEventListener('input', () => {
+    if (id === 'yLabel' || id === 'yMin' || id === 'yMax') draw();
+  });
+});
+
+document.getElementById('asOfMonth').addEventListener('change', e => {
+  S.asOf = monthInputToYyyymm(e.target.value);
+  S.asOfManual = !!S.asOf;
+  syncAsOfInput();
+  updateMOB();
+  draw();
+});
+
+document.getElementById('asOfAuto').addEventListener('click', () => {
+  S.asOfManual = false;
+  syncAsOfInput();
+  updateMOB();
+  draw();
+});
+
+document.getElementById('chartName').addEventListener('input', () => {
+  S.nameManual = true;
+  const suffixEl = document.getElementById('titleSuffix');
+  if (suffixEl) suffixEl.textContent = yearSuffix();
+  if (S.chart) {
+    S.chart.options.plugins.title.text = fullTitle();
+    S.chart.update('none');
+  }
+});
+
+document.getElementById('bgMode').addEventListener('change', () => {
+  document.getElementById('bgColor').disabled = document.getElementById('bgMode').value !== 'custom';
+});
+
+function stripTail(arr) {
+  const v = [...arr];
+  while (v.length && (v[v.length - 1] === null || v[v.length - 1] === 0)) v.pop();
+  return v;
+}
+
+function avgVals(list) {
+  const mx = Math.max(...list.map(([, v]) => v.length));
+  return Array.from({ length: mx }, (_, i) => {
+    const ns = list.map(([, v]) => v[i]).filter(x => x !== null && x !== undefined && !Number.isNaN(x));
+    return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null;
+  });
+}
+
+function groupCohorts(cohorts) {
+  if (S.period === 'monthly') return cohorts.map(([c, v]) => ({ key: c, list: [[c, v]] }));
+  const map = {};
+  cohorts.forEach(([c, v]) => {
+    const ci = parseInt(c, 10);
+    const yr = Math.floor(ci / 100);
+    const mo = ci % 100;
+    const key = S.period === 'annual' ? String(yr) : `${yr}Q${Math.ceil(mo / 3)}`;
+    if (!map[key]) map[key] = [];
+    map[key].push([c, v]);
+  });
+  return Object.entries(map)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, list]) => ({ key, list }));
+}
+
+function labelFor(key) {
+  if (/^\d{4}$/.test(key)) return key;
+  if (/Q/.test(key)) return key;
+  const ci = parseInt(key, 10);
+  const yr = Math.floor(ci / 100);
+  const mo = ci % 100;
+  return `${MN[mo - 1]}-${String(yr).slice(2)}`;
+}
+
+function buildCfg(labels, datasets, animated) {
+  const type = S.ctype === 'bar' ? 'bar' : (S.ctype === 'scatter' ? 'scatter' : 'line');
+  const showLegend = document.getElementById('showLegend').checked;
+  const showAxes = document.getElementById('showAxes').checked;
+  const showGrid = document.getElementById('showGrid').checked;
+  const title = fullTitle();
+  const yLabel = document.getElementById('yLabel').value.trim() || defaultYLabel();
+  const yMinRaw = document.getElementById('yMin').value.trim();
+  const yMaxRaw = document.getElementById('yMax').value.trim();
+  const yMin = yMinRaw === '' ? undefined : Number(yMinRaw);
+  const yMax = yMaxRaw === '' ? undefined : Number(yMaxRaw);
+  const yScale = {
+    display: showAxes,
+    title: {
+      display: showAxes,
+      text: yLabel,
+      font: { family: 'Inter', size: 16 },
+      color: '#6B8B8E',
+    },
+    grid: {
+      display: showGrid,
+      color: 'rgba(0,0,0,0.06)',
+      lineWidth: 0.5,
+    },
+    ticks: {
+      font: { family: 'Inter', size: 15 },
+      color: '#6B8B8E',
+      callback: v => fmtValue(v),
+    },
+    border: { color: '#000000', width: 0.6 },
+  };
+  if (Number.isFinite(yMin)) yScale.min = yMin;
+  if (Number.isFinite(yMax)) yScale.max = yMax;
+
+  return {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: animated === false ? false : undefined,
+      layout: { padding: { top: 4, right: 8, bottom: 4, left: 4 } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        title: {
+          display: true,
+          text: title,
+          color: '#003A40',
+          font: { family: 'Inter', size: 22, weight: '700' },
+          padding: { bottom: 16 },
+        },
+        legend: {
+          display: showLegend,
+          position: 'right',
+          labels: {
+            boxWidth: 14,
+            font: { family: 'Inter', size: 15 },
+            padding: 12,
+            color: '#1A2B2D',
+          },
+        },
+        tooltip: {
+          titleFont: { family: 'Inter', size: 15 },
+          bodyFont: { family: 'Inter', size: 15 },
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return v !== null && v !== undefined ? `${ctx.dataset.label}: ${fmtValue(v)}` : null;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          display: showAxes,
+          title: {
+            display: showAxes,
+            text: S.view === 'cohort' ? 'Months since origination' : 'Vintage',
+            font: { family: 'Inter', size: 16 },
+            color: '#6B8B8E',
+          },
+          grid: { display: false },
+          ticks: {
+            font: { family: 'Inter', size: 15 },
+            color: '#6B8B8E',
+            maxTicksLimit: labels.length > 24 ? 16 : 24,
+          },
+          border: { color: '#000000', width: 0.6 },
+        },
+        y: yScale,
+      },
+    },
+  };
+}
+
+function computeData() {
+  if (!S.metric) return null;
+  const cohorts = getCohorts();
+  if (!cohorts.length) return null;
+  S.detectedFmt = detectFormat(cohorts, anyHasPct());
+  const groups = groupCohorts(cohorts);
+  const n = groups.length;
+  const showPts = document.getElementById('showPoints').checked;
+  let datasets = [];
+  let labels = [];
+
+  if (S.view === 'cohort') {
+    let mx = 0;
+    groups.forEach(({ list }) => {
+      const a = stripTail(avgVals(list));
+      if (a.length > mx) mx = a.length;
+    });
+    labels = Array.from({ length: mx }, (_, i) => i + 1);
+    datasets = groups.map(({ key, list }, i) => {
+      const avg = stripTail(avgVals(list));
+      const { s, a } = colorFor(i, n);
+      const t = n > 1 ? i / (n - 1) : 1;
+      return {
+        label: labelFor(key),
+        data: labels.map(l => (avg[l - 1] !== undefined ? avg[l - 1] : null)),
+        borderColor: s,
+        backgroundColor: S.ctype === 'area' ? a : s,
+        borderWidth: 1.2 + t * 1.0,
+        pointRadius: S.ctype === 'scatter' ? 4 : (showPts ? 2 : 0),
+        pointHoverRadius: 5,
+        pointBackgroundColor: s,
+        fill: S.ctype === 'area',
+        tension: 0.15,
+        spanGaps: false,
+      };
+    });
+  } else {
+    labels = groups.map(({ key }) => labelFor(key));
+    const vals = groups.map(({ list }) => {
+      const a = avgVals(list);
+      return a[S.mob - 1] !== undefined ? a[S.mob - 1] : null;
+    });
+    datasets = [{
+      label: `MOB ${S.mob}`,
+      data: vals,
+      borderColor: groups.map((_, i) => colorFor(i, n).s),
+      backgroundColor: groups.map((_, i) => colorFor(i, n).s),
+      borderWidth: 1.5,
+      pointRadius: 5,
+      fill: false,
+    }];
+  }
+  return { labels, datasets, cohorts, groups };
+}
+
+function draw() {
+  const em = document.getElementById('emptyState');
+  const ca = document.getElementById('chartArea');
+  const result = computeData();
+  if (!result) {
+    em.style.display = 'flex';
+    ca.style.display = 'none';
+    return;
+  }
+  const { labels, datasets, cohorts, groups } = result;
+  em.style.display = 'none';
+  ca.style.display = 'flex';
+  S.lastLabels = labels;
+  S.lastDatasets = datasets;
+
+  const nameEl = document.getElementById('chartName');
+  const suffixEl = document.getElementById('titleSuffix');
+  if (suffixEl) suffixEl.textContent = yearSuffix();
+  if (!S.nameManual) nameEl.value = defaultName();
+
+  const nLabel = S.period === 'monthly' ? 'vintage' : S.period === 'quarterly' ? 'quarter' : 'year';
+  const fmt = activeFmt();
+  const trimOn = document.getElementById('trimLife').checked && S.asOf;
+  const cumulOn = document.getElementById('makeCumul').checked;
+  document.getElementById('statBar').innerHTML =
+    `<span style="font-size:11px;color:var(--muted);">${cohorts.length} cohorts</span>` +
+    `<span style="color:var(--border);padding:0 2px;">·</span>` +
+    `<span style="font-size:11px;color:var(--muted);">${groups.length} ${nLabel}s</span>` +
+    `<span style="color:var(--border);padding:0 2px;">·</span>` +
+    `<span style="font-size:11px;font-weight:600;color:var(--p);">${escapeHtml(displayMetric())}</span>` +
+    `<span style="color:var(--border);padding:0 2px;">·</span>` +
+    `<span style="font-size:11px;color:var(--muted);">format: ${fmt}${document.getElementById('fmtSel').value === 'auto' ? ' (auto)' : ''}</span>` +
+    (cumulOn
+      ? `<span style="color:var(--border);padding:0 2px;">·</span><span style="font-size:11px;color:var(--muted);">cumulative</span>`
+      : '') +
+    (trimOn
+      ? `<span style="color:var(--border);padding:0 2px;">·</span><span style="font-size:11px;color:var(--muted);">as of EOM ${formatAsOf(S.asOf)}</span>`
+      : '');
+
+  if (S.chart) { S.chart.destroy(); S.chart = null; }
+  S.chart = new Chart(document.getElementById('cvs'), buildCfg(labels, datasets, true));
+}
+
+function exportBg() {
+  const mode = document.getElementById('bgMode').value;
+  if (mode === 'transparent') return null;
+  if (mode === 'custom') return document.getElementById('bgColor').value;
+  return '#FFFFFF';
+}
+
+function renderExportCanvas(W, H) {
+  return new Promise(resolve => {
+    const tmp = document.createElement('canvas');
+    tmp.width = W;
+    tmp.height = H;
+    const ctx2 = tmp.getContext('2d');
+    const bg = exportBg();
+    if (bg) {
+      ctx2.fillStyle = bg;
+      ctx2.fillRect(0, 0, W, H);
+    } else {
+      ctx2.clearRect(0, 0, W, H);
+    }
+    const cfg = buildCfg(S.lastLabels, S.lastDatasets, false);
+    cfg.options.responsive = false;
+    cfg.options.animation = false;
+    const tmpChart = new Chart(tmp, cfg);
+    setTimeout(() => {
+      resolve({ canvas: tmp, chart: tmpChart });
+    }, 80);
+  });
+}
+
+async function downloadChart() {
+  if (!S.lastLabels) return;
+  const W = Math.max(400, Math.min(4000, parseInt(document.getElementById('dlW').value, 10) || 1200));
+  const H = Math.max(300, Math.min(3000, parseInt(document.getElementById('dlH').value, 10) || 675));
+  const { canvas, chart } = await renderExportCanvas(W, H);
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  const years = [...S.years].sort().join('-');
+  a.download = `cohort_${(S.metric || 'chart').replace(/[^a-z0-9]+/gi, '_')}_${years}_${W}x${H}.png`;
+  a.click();
+  chart.destroy();
+}
+
+async function copyChart() {
+  if (!S.lastLabels) return;
+  if (!navigator.clipboard || !window.ClipboardItem) {
+    alert('Copy to clipboard is not supported in this browser. Use Download PNG instead.');
+    return;
+  }
+  const W = Math.max(400, Math.min(4000, parseInt(document.getElementById('dlW').value, 10) || 1200));
+  const H = Math.max(300, Math.min(3000, parseInt(document.getElementById('dlH').value, 10) || 675));
+  const { canvas, chart } = await renderExportCanvas(W, H);
+  try {
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    const btn = document.getElementById('copyBtn');
+    const prev = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = prev; }, 1200);
+  } catch (err) {
+    alert('Could not copy image. Try Download PNG instead.');
+  }
+  chart.destroy();
+}
+
+document.getElementById('dlBtn').addEventListener('click', () => { downloadChart(); });
+document.getElementById('copyBtn').addEventListener('click', () => { copyChart(); });
+</script>
+</body>
+</html>
