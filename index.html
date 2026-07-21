@@ -1021,7 +1021,7 @@ function buildCfg(labels, datasets, animated) {
     title: {
       display: showAxes,
       text: yLabel,
-      font: { family: 'Inter', size: 20 },
+      font: { family: 'Inter', size: 26 },
       color: '#6B8B8E',
     },
     grid: {
@@ -1030,7 +1030,7 @@ function buildCfg(labels, datasets, animated) {
       lineWidth: 0.5,
     },
     ticks: {
-      font: { family: 'Inter', size: 18 },
+      font: { family: 'Inter', size: 24 },
       color: '#6B8B8E',
       callback: v => fmtValue(v),
     },
@@ -1053,22 +1053,22 @@ function buildCfg(labels, datasets, animated) {
           display: true,
           text: title,
           color: '#003A40',
-          font: { family: 'Inter', size: 26, weight: '700' },
-          padding: { bottom: 18 },
+          font: { family: 'Inter', size: 34, weight: '700' },
+          padding: { bottom: 20 },
         },
         legend: {
           display: showLegend,
           position: 'right',
           labels: {
-            boxWidth: 16,
-            font: { family: 'Inter', size: 18 },
-            padding: 12,
+            boxWidth: 20,
+            font: { family: 'Inter', size: 24 },
+            padding: 14,
             color: '#1A2B2D',
           },
         },
         tooltip: {
-          titleFont: { family: 'Inter', size: 16 },
-          bodyFont: { family: 'Inter', size: 16 },
+          titleFont: { family: 'Inter', size: 20 },
+          bodyFont: { family: 'Inter', size: 20 },
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
@@ -1083,12 +1083,12 @@ function buildCfg(labels, datasets, animated) {
           title: {
             display: showAxes,
             text: S.view === 'cohort' ? 'Months since origination' : 'Vintage',
-            font: { family: 'Inter', size: 20 },
+            font: { family: 'Inter', size: 26 },
             color: '#6B8B8E',
           },
           grid: { display: false },
           ticks: {
-            font: { family: 'Inter', size: 18 },
+            font: { family: 'Inter', size: 24 },
             color: '#6B8B8E',
             maxTicksLimit: labels.length > 24 ? 16 : 24,
           },
@@ -1127,9 +1127,9 @@ function computeData() {
         data: labels.map(l => (avg[l - 1] !== undefined ? avg[l - 1] : null)),
         borderColor: s,
         backgroundColor: S.ctype === 'area' ? a : s,
-        borderWidth: 1.2 + t * 1.0,
-        pointRadius: S.ctype === 'scatter' ? 4 : (showPts ? 2 : 0),
-        pointHoverRadius: 5,
+        borderWidth: 3.2 + t * 1.6,
+        pointRadius: S.ctype === 'scatter' ? 6 : (showPts ? 3 : 0),
+        pointHoverRadius: 7,
         pointBackgroundColor: s,
         fill: S.ctype === 'area',
         tension: 0.15,
@@ -1147,8 +1147,8 @@ function computeData() {
       data: vals,
       borderColor: groups.map((_, i) => colorFor(i, n).s),
       backgroundColor: groups.map((_, i) => colorFor(i, n).s),
-      borderWidth: 1.5,
-      pointRadius: 5,
+      borderWidth: 3.5,
+      pointRadius: 7,
       fill: false,
     }];
   }
