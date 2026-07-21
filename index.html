@@ -1021,7 +1021,7 @@ function buildCfg(labels, datasets, animated) {
     title: {
       display: showAxes,
       text: yLabel,
-      font: { family: 'Inter', size: 16 },
+      font: { family: 'Inter', size: 20 },
       color: '#6B8B8E',
     },
     grid: {
@@ -1030,7 +1030,7 @@ function buildCfg(labels, datasets, animated) {
       lineWidth: 0.5,
     },
     ticks: {
-      font: { family: 'Inter', size: 15 },
+      font: { family: 'Inter', size: 18 },
       color: '#6B8B8E',
       callback: v => fmtValue(v),
     },
@@ -1053,22 +1053,22 @@ function buildCfg(labels, datasets, animated) {
           display: true,
           text: title,
           color: '#003A40',
-          font: { family: 'Inter', size: 22, weight: '700' },
-          padding: { bottom: 16 },
+          font: { family: 'Inter', size: 26, weight: '700' },
+          padding: { bottom: 18 },
         },
         legend: {
           display: showLegend,
           position: 'right',
           labels: {
-            boxWidth: 14,
-            font: { family: 'Inter', size: 15 },
+            boxWidth: 16,
+            font: { family: 'Inter', size: 18 },
             padding: 12,
             color: '#1A2B2D',
           },
         },
         tooltip: {
-          titleFont: { family: 'Inter', size: 15 },
-          bodyFont: { family: 'Inter', size: 15 },
+          titleFont: { family: 'Inter', size: 16 },
+          bodyFont: { family: 'Inter', size: 16 },
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
@@ -1083,12 +1083,12 @@ function buildCfg(labels, datasets, animated) {
           title: {
             display: showAxes,
             text: S.view === 'cohort' ? 'Months since origination' : 'Vintage',
-            font: { family: 'Inter', size: 16 },
+            font: { family: 'Inter', size: 20 },
             color: '#6B8B8E',
           },
           grid: { display: false },
           ticks: {
-            font: { family: 'Inter', size: 15 },
+            font: { family: 'Inter', size: 18 },
             color: '#6B8B8E',
             maxTicksLimit: labels.length > 24 ? 16 : 24,
           },
