@@ -229,6 +229,13 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
         <label><input type="checkbox" id="showEndLabels"> End labels</label>
         <label><input type="checkbox" id="showPoints"> Show all points</label>
       </div>
+      <div class="field" style="margin-top:8px;">
+        <span class="field-label">Legend style</span>
+        <select id="legendStyle">
+          <option value="months" selected>All months</option>
+          <option value="gradient">Gradient</option>
+        </select>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -924,7 +931,7 @@ document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click',
   draw();
 }));
 
-['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'showEndDots', 'showEndLabels', 'yLabel', 'yMin', 'yMax', 'trimLife', 'makeCumul'].forEach(id => {
+['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'showEndDots', 'showEndLabels', 'legendStyle', 'yLabel', 'yMin', 'yMax', 'trimLife', 'makeCumul'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     if (id === 'trimLife' || id === 'makeCumul') updateMOB();
     if (id === 'makeCumul') {
@@ -1072,9 +1079,87 @@ const endLabelPlugin = {
   },
 };
 
+const gradientLegendPlugin = {
+  id: 'gradientLegend',
+  afterDraw(chart) {
+    const show = document.getElementById('showLegend')?.checked;
+    const style = document.getElementById('legendStyle')?.value;
+    if (!show || style !== 'gradient') return;
+    if (S.view !== 'cohort') return;
+
+    const labels = [];
+    const colors = [];
+    chart.data.datasets.forEach((ds, di) => {
+      if (!chart.isDatasetVisible(di)) return;
+      if (typeof ds.borderColor !== 'string') return;
+      labels.push(ds.label);
+      colors.push(ds.borderColor);
+    });
+    if (colors.length < 1) return;
+
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+
+    const barW = 18;
+    const barH = Math.max(120, chartArea.bottom - chartArea.top);
+    const barX = chartArea.right + 16;
+    const barY = chartArea.top;
+
+    // Gradient: newest (dark) at top → oldest (light) at bottom
+    const grad = ctx.createLinearGradient(0, barY, 0, barY + barH);
+    const n = colors.length;
+    for (let i = 0; i < n; i++) {
+      // colors array is oldest→newest; reverse for top=newest
+      const c = colors[n - 1 - i];
+      grad.addColorStop(n === 1 ? 0 : i / (n - 1), c);
+    }
+
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.fillRect(barX, barY, barW, barH);
+
+    // Thin outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX + 0.5, barY + 0.5, barW - 1, barH - 1);
+
+    const topLabel = labels[labels.length - 1];
+    const botLabel = labels[0];
+    const topColor = colors[colors.length - 1];
+    const botColor = colors[0];
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 20px Inter, sans-serif';
+    ctx.fillStyle = topColor;
+    ctx.fillText(topLabel, barX + barW + 10, barY + 2);
+
+    ctx.font = '500 20px Inter, sans-serif';
+    ctx.fillStyle = botColor;
+    ctx.fillText(botLabel, barX + barW + 10, barY + barH - 2);
+
+    // Optional mid labels when few series (quarters/years)
+    if (labels.length >= 3 && labels.length <= 8) {
+      ctx.font = '500 16px Inter, sans-serif';
+      for (let i = 1; i < labels.length - 1; i++) {
+        const t = i / (labels.length - 1); // from oldest(bottom)=0 conceptually
+        // labels[i] is from oldest; y from bottom
+        const y = barY + barH - t * barH;
+        ctx.fillStyle = colors[i];
+        ctx.fillText(labels[i], barX + barW + 10, y);
+      }
+    }
+
+    ctx.restore();
+  },
+};
+
 function buildCfg(labels, datasets, animated) {
   const type = S.ctype === 'bar' ? 'bar' : (S.ctype === 'scatter' ? 'scatter' : 'line');
   const showLegend = document.getElementById('showLegend').checked;
+  const legendStyle = document.getElementById('legendStyle').value;
+  const useGradient = showLegend && legendStyle === 'gradient';
+  const useMonthLegend = showLegend && legendStyle === 'months';
   const showAxes = document.getElementById('showAxes').checked;
   const showGrid = document.getElementById('showGrid').checked;
   const showEndLabels = document.getElementById('showEndLabels').checked;
@@ -1107,10 +1192,15 @@ function buildCfg(labels, datasets, animated) {
   if (Number.isFinite(yMin)) yScale.min = yMin;
   if (Number.isFinite(yMax)) yScale.max = yMax;
 
+  let rightPad = 12;
+  if (showEndLabels) rightPad = Math.max(rightPad, 88);
+  if (useGradient) rightPad = Math.max(rightPad, 110);
+  if (useMonthLegend) rightPad = Math.max(rightPad, 8);
+
   return {
     type,
     data: { labels, datasets },
-    plugins: [endLabelPlugin],
+    plugins: [endLabelPlugin, gradientLegendPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -1118,7 +1208,7 @@ function buildCfg(labels, datasets, animated) {
       layout: {
         padding: {
           top: 4,
-          right: showEndLabels ? 88 : 12,
+          right: rightPad,
           bottom: 4,
           left: 4,
         },
@@ -1133,7 +1223,7 @@ function buildCfg(labels, datasets, animated) {
           padding: { bottom: 20 },
         },
         legend: {
-          display: showLegend,
+          display: useMonthLegend,
           position: 'right',
           labels: {
             boxWidth: 20,
