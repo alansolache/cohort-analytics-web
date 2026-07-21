@@ -3,19 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; img-src 'self' data: blob:; font-src https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'none'; media-src 'none'; worker-src 'none'; manifest-src 'none'; upgrade-insecure-requests">
-<meta name="referrer" content="no-referrer">
-<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta name="app-build" content="2026-07-21-stable-colors">
 <title>Stori · Cohort Analytics</title>
-<link rel="icon" href="assets/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="assets/favicon-512.png">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -745,14 +738,32 @@ document.getElementById('metSel').addEventListener('change', e => {
   draw();
 });
 
-function getCohorts() {
+function metricCohorts(filterYears) {
   const secs = allSecs();
   if (!S.metric || !secs[S.metric]) return [];
   return Object.entries(secs[S.metric])
-    .filter(([c]) => S.years.has(Math.floor(parseInt(c, 10) / 100)))
+    .filter(([c]) => !filterYears || S.years.has(Math.floor(parseInt(c, 10) / 100)))
     .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
     .map(([c, v]) => [c, transformSeries(v, parseInt(c, 10))])
     .filter(([, v]) => v.some(x => x !== null && x !== undefined && !Number.isNaN(x)));
+}
+
+function getCohorts() {
+  return metricCohorts(true);
+}
+
+/** Color / legend positions locked to full database — not the year filter. */
+function colorScale() {
+  const allGroups = groupCohorts(metricCohorts(false));
+  const n = Math.max(allGroups.length, 1);
+  const indexByKey = new Map(allGroups.map((g, i) => [g.key, i]));
+  return {
+    n,
+    forKey(key) {
+      const i = indexByKey.has(key) ? indexByKey.get(key) : 0;
+      return { i, ...colorFor(i, n), t: n > 1 ? i / (n - 1) : 1 };
+    },
+  };
 }
 
 function makeCumulative(vals) {
@@ -1292,7 +1303,7 @@ function computeData() {
   if (!cohorts.length) return null;
   S.detectedFmt = detectFormat(cohorts, anyHasPct());
   const groups = groupCohorts(cohorts);
-  const n = groups.length;
+  const scale = colorScale();
   const showPts = document.getElementById('showPoints').checked;
   const endDots = document.getElementById('showEndDots').checked;
   let datasets = [];
@@ -1305,10 +1316,9 @@ function computeData() {
       if (a.length > mx) mx = a.length;
     });
     labels = Array.from({ length: mx }, (_, i) => i + 1);
-    datasets = groups.map(({ key, list }, i) => {
+    datasets = groups.map(({ key, list }) => {
       const avg = stripTail(avgVals(list));
-      const { s, a } = colorFor(i, n);
-      const t = n > 1 ? i / (n - 1) : 1;
+      const { s, a, t } = scale.forKey(key);
       const data = labels.map(l => (avg[l - 1] !== undefined ? avg[l - 1] : null));
       const last = lastValidIndex(data);
       const radii = data.map((_, idx) => {
@@ -1338,11 +1348,12 @@ function computeData() {
       const a = avgVals(list);
       return a[S.mob - 1] !== undefined ? a[S.mob - 1] : null;
     });
+    const colors = groups.map(({ key }) => scale.forKey(key).s);
     datasets = [{
       label: `MOB ${S.mob}`,
       data: vals,
-      borderColor: groups.map((_, i) => colorFor(i, n).s),
-      backgroundColor: groups.map((_, i) => colorFor(i, n).s),
+      borderColor: colors,
+      backgroundColor: colors,
       borderWidth: 3.5,
       pointRadius: 7,
       fill: false,
