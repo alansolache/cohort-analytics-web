@@ -15,6 +15,7 @@
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 header{background:var(--p);color:white;padding:12px 22px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.hdr-logo{width:28px;height:auto;display:block;flex-shrink:0;}
 .hdr-title{font-size:15px;font-weight:600;letter-spacing:-.2px;}
 .hdr-sub{font-size:11px;opacity:.65;margin-top:1px;}
 #hdrChip{margin-left:auto;display:none;background:rgba(255,255,255,.15);border-radius:20px;padding:3px 12px;font-size:11px;}
@@ -89,7 +90,7 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
 </head>
 <body>
 <header>
-  <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+  <img class="hdr-logo" src="assets/stori-symbol-white.png" alt="Stori" width="28" height="35">
   <div>
     <div class="hdr-title">Stori · Cohort Analytics</div>
     <div class="hdr-sub">Upload or paste TSV / CSV — filter vintages, style, and download for slides</div>
