@@ -225,6 +225,8 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
         <label><input type="checkbox" id="showLegend" checked> Show legend</label>
         <label><input type="checkbox" id="showAxes" checked> Show axes</label>
         <label><input type="checkbox" id="showGrid" checked> Show grid</label>
+        <label><input type="checkbox" id="showEndDots" checked> End dots</label>
+        <label><input type="checkbox" id="showEndLabels"> End labels</label>
         <label><input type="checkbox" id="showPoints"> Show all points</label>
       </div>
     </div>
@@ -922,7 +924,7 @@ document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click',
   draw();
 }));
 
-['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'yLabel', 'yMin', 'yMax', 'trimLife', 'makeCumul'].forEach(id => {
+['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'showEndDots', 'showEndLabels', 'yLabel', 'yMin', 'yMax', 'trimLife', 'makeCumul'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     if (id === 'trimLife' || id === 'makeCumul') updateMOB();
     if (id === 'makeCumul') {
@@ -1005,11 +1007,77 @@ function labelFor(key) {
   return `${MN[mo - 1]}-${String(yr).slice(2)}`;
 }
 
+function lastValidIndex(data) {
+  for (let i = data.length - 1; i >= 0; i--) {
+    const v = data[i];
+    if (v !== null && v !== undefined && !Number.isNaN(v)) return i;
+  }
+  return -1;
+}
+
+const endLabelPlugin = {
+  id: 'endLabels',
+  afterDatasetsDraw(chart) {
+    const el = document.getElementById('showEndLabels');
+    if (!el || !el.checked) return;
+    if (S.view !== 'cohort') return;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+
+    const ends = [];
+    chart.data.datasets.forEach((ds, di) => {
+      if (!chart.isDatasetVisible(di)) return;
+      const meta = chart.getDatasetMeta(di);
+      if (!meta || !meta.data || !meta.data.length) return;
+      const li = lastValidIndex(ds.data);
+      if (li < 0) return;
+      const pt = meta.data[li];
+      if (!pt || pt.skip) return;
+      const color = typeof ds.borderColor === 'string' ? ds.borderColor : '#003A40';
+      ends.push({ x: pt.x, y: pt.y, val: ds.data[li], color });
+    });
+    if (!ends.length) return;
+
+    ends.sort((a, b) => a.y - b.y);
+    const minGap = 18;
+    const placed = [];
+    for (const e of ends) {
+      let yText = e.y;
+      for (const py of placed) {
+        if (Math.abs(yText - py) < minGap) yText = py + minGap;
+      }
+      placed.push(yText);
+      e.yText = yText;
+    }
+
+    ctx.save();
+    ctx.font = '700 18px Inter, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    for (const e of ends) {
+      const label = fmtValue(e.val);
+      const xText = Math.min(e.x + 10, chartArea.right - 4);
+      ctx.fillStyle = e.color;
+      if (Math.abs(e.yText - e.y) > 2) {
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(e.x + 4, e.y);
+        ctx.lineTo(xText - 2, e.yText);
+        ctx.stroke();
+      }
+      ctx.fillText(label, xText, e.yText);
+    }
+    ctx.restore();
+  },
+};
+
 function buildCfg(labels, datasets, animated) {
   const type = S.ctype === 'bar' ? 'bar' : (S.ctype === 'scatter' ? 'scatter' : 'line');
   const showLegend = document.getElementById('showLegend').checked;
   const showAxes = document.getElementById('showAxes').checked;
   const showGrid = document.getElementById('showGrid').checked;
+  const showEndLabels = document.getElementById('showEndLabels').checked;
   const title = fullTitle();
   const yLabel = document.getElementById('yLabel').value.trim() || defaultYLabel();
   const yMinRaw = document.getElementById('yMin').value.trim();
@@ -1042,11 +1110,19 @@ function buildCfg(labels, datasets, animated) {
   return {
     type,
     data: { labels, datasets },
+    plugins: [endLabelPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: animated === false ? false : undefined,
-      layout: { padding: { top: 4, right: 8, bottom: 4, left: 4 } },
+      layout: {
+        padding: {
+          top: 4,
+          right: showEndLabels ? 88 : 12,
+          bottom: 4,
+          left: 4,
+        },
+      },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         title: {
@@ -1108,6 +1184,7 @@ function computeData() {
   const groups = groupCohorts(cohorts);
   const n = groups.length;
   const showPts = document.getElementById('showPoints').checked;
+  const endDots = document.getElementById('showEndDots').checked;
   let datasets = [];
   let labels = [];
 
@@ -1122,15 +1199,24 @@ function computeData() {
       const avg = stripTail(avgVals(list));
       const { s, a } = colorFor(i, n);
       const t = n > 1 ? i / (n - 1) : 1;
+      const data = labels.map(l => (avg[l - 1] !== undefined ? avg[l - 1] : null));
+      const last = lastValidIndex(data);
+      const radii = data.map((_, idx) => {
+        if (S.ctype === 'scatter' || showPts) return 5;
+        if (endDots && idx === last) return 7;
+        return 0;
+      });
       return {
         label: labelFor(key),
-        data: labels.map(l => (avg[l - 1] !== undefined ? avg[l - 1] : null)),
+        data,
         borderColor: s,
         backgroundColor: S.ctype === 'area' ? a : s,
         borderWidth: 3.2 + t * 1.6,
-        pointRadius: S.ctype === 'scatter' ? 6 : (showPts ? 3 : 0),
-        pointHoverRadius: 7,
+        pointRadius: radii,
+        pointHoverRadius: 8,
         pointBackgroundColor: s,
+        pointBorderColor: s,
+        pointBorderWidth: 0,
         fill: S.ctype === 'area',
         tension: 0.15,
         spanGaps: false,
