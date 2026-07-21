@@ -1058,7 +1058,7 @@ const endLabelPlugin = {
     }
 
     ctx.save();
-    ctx.font = '700 18px Inter, sans-serif';
+    ctx.font = '700 16px Inter, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     for (const e of ends) {
@@ -1130,17 +1130,17 @@ const gradientLegendPlugin = {
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.font = '700 20px Inter, sans-serif';
+    ctx.font = '700 18px Inter, sans-serif';
     ctx.fillStyle = topColor;
     ctx.fillText(topLabel, barX + barW + 10, barY + 2);
 
-    ctx.font = '500 20px Inter, sans-serif';
+    ctx.font = '500 18px Inter, sans-serif';
     ctx.fillStyle = botColor;
     ctx.fillText(botLabel, barX + barW + 10, barY + barH - 2);
 
     // Optional mid labels when few series (quarters/years)
     if (labels.length >= 3 && labels.length <= 8) {
-      ctx.font = '500 16px Inter, sans-serif';
+      ctx.font = '500 14px Inter, sans-serif';
       for (let i = 1; i < labels.length - 1; i++) {
         const t = i / (labels.length - 1); // from oldest(bottom)=0 conceptually
         // labels[i] is from oldest; y from bottom
@@ -1174,7 +1174,7 @@ function buildCfg(labels, datasets, animated) {
     title: {
       display: showAxes,
       text: yLabel,
-      font: { family: 'Inter', size: 26 },
+      font: { family: 'Inter', size: 22 },
       color: '#6B8B8E',
     },
     grid: {
@@ -1183,7 +1183,7 @@ function buildCfg(labels, datasets, animated) {
       lineWidth: 0.5,
     },
     ticks: {
-      font: { family: 'Inter', size: 24 },
+      font: { family: 'Inter', size: 20 },
       color: '#6B8B8E',
       callback: v => fmtValue(v),
     },
@@ -1219,22 +1219,22 @@ function buildCfg(labels, datasets, animated) {
           display: true,
           text: title,
           color: '#003A40',
-          font: { family: 'Inter', size: 34, weight: '700' },
-          padding: { bottom: 20 },
+          font: { family: 'Inter', size: 30, weight: '700' },
+          padding: { bottom: 18 },
         },
         legend: {
           display: useMonthLegend,
           position: 'right',
           labels: {
-            boxWidth: 20,
-            font: { family: 'Inter', size: 24 },
-            padding: 14,
+            boxWidth: 18,
+            font: { family: 'Inter', size: 20 },
+            padding: 12,
             color: '#1A2B2D',
           },
         },
         tooltip: {
-          titleFont: { family: 'Inter', size: 20 },
-          bodyFont: { family: 'Inter', size: 20 },
+          titleFont: { family: 'Inter', size: 18 },
+          bodyFont: { family: 'Inter', size: 18 },
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
@@ -1249,12 +1249,12 @@ function buildCfg(labels, datasets, animated) {
           title: {
             display: showAxes,
             text: S.view === 'cohort' ? 'Months since origination' : 'Vintage',
-            font: { family: 'Inter', size: 26 },
+            font: { family: 'Inter', size: 22 },
             color: '#6B8B8E',
           },
           grid: { display: false },
           ticks: {
-            font: { family: 'Inter', size: 24 },
+            font: { family: 'Inter', size: 20 },
             color: '#6B8B8E',
             maxTicksLimit: labels.length > 24 ? 16 : 24,
           },
