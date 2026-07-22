@@ -9,7 +9,11 @@ Browser-based cohort chart tool for the team. Upload or paste TSV/CSV, filter vi
 | Role | URL | Access |
 | --- | --- | --- |
 | **Production** | https://cohorts.koai.app/ | Cloudflare Zero Trust |
-| **Sandbox** | https://alan-solache.github.io/cohort-analytics-web/ | Public GitHub Pages |
+| **Sandbox** | https://alansolache.github.io/cohort-analytics-web/ | Public GitHub Pages |
+
+> First-time enable (needs repo **Admin** once):  
+> GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions**  
+> Then re-run the workflow **Deploy GitHub Pages sandbox**, or push any commit to `main`.
 
 Use production with the team. Use the GitHub Pages sandbox for quick public checks without Access login.
 
