@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta name="app-build" content="2026-07-21-stable-colors">
+<meta name="app-build" content="2026-07-23-title-suffix-selected-years">
 <title>Stori · Cohort Analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -461,16 +461,9 @@ function displayMetric() {
   return S.metric || 'Cohort';
 }
 
-function dataYears() {
-  const secs = allSecs();
-  if (!S.metric || !secs[S.metric]) return [];
-  return [...new Set(
-    Object.keys(secs[S.metric]).map(c => Math.floor(parseInt(c, 10) / 100))
-  )].sort((a, b) => a - b);
-}
-
+/** Year suffix follows the selected year filters. */
 function yearSuffix() {
-  const yrs = dataYears();
+  const yrs = [...S.years].sort((a, b) => a - b);
   if (!yrs.length) return '— Vintages';
   if (yrs.length === 1) return `— ${yrs[0]} Vintages`;
   if (yrs.length <= 4) return `— ${yrs.join(' · ')} Vintages`;
@@ -493,11 +486,16 @@ function fullTitle() {
   return `${name} ${suffix}`;
 }
 
-/** Title updates only when source data / metric changes — not on year filters. */
-function syncTitleFromData() {
-  const nameEl = document.getElementById('chartName');
+/** Suffix always tracks selected years. */
+function syncTitleSuffix() {
   const suffixEl = document.getElementById('titleSuffix');
   if (suffixEl) suffixEl.textContent = yearSuffix();
+}
+
+/** Name only resets on data/metric change (unless user edited it). */
+function syncTitleFromData() {
+  syncTitleSuffix();
+  const nameEl = document.getElementById('chartName');
   if (!S.nameManual && nameEl) nameEl.value = defaultName();
 }
 
@@ -995,7 +993,8 @@ document.getElementById('asOfAuto').addEventListener('click', () => {
 });
 
 document.getElementById('chartName').addEventListener('input', () => {
-  S.nameManual = true;
+  // Emptying the name unlocks auto-title again; typing locks it.
+  S.nameManual = !!document.getElementById('chartName').value.trim();
   if (S.chart) {
     S.chart.options.plugins.title.text = fullTitle();
     S.chart.update('none');
@@ -1376,6 +1375,7 @@ function draw() {
   ca.style.display = 'flex';
   S.lastLabels = labels;
   S.lastDatasets = datasets;
+  syncTitleSuffix();
 
   const nLabel = S.period === 'monthly' ? 'vintage' : S.period === 'quarterly' ? 'quarter' : 'year';
   const fmt = activeFmt();
