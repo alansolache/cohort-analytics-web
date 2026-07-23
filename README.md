@@ -6,20 +6,16 @@ Browser-based cohort chart tool for the team. Upload or paste TSV/CSV, filter vi
 
 ## URLs
 
-| Role | URL | Access |
+| Role | URL | Notes |
 | --- | --- | --- |
-| **Production** | https://cohorts.koai.app/ | Cloudflare Zero Trust |
-| **Sandbox** | https://alansolache.github.io/cohort-analytics-web/ | Public GitHub Pages |
+| **Production** | https://cohorts.koai.app/ | Cloudflare Zero Trust (team login) |
+| **Sandbox** | https://cohort-analytics-web.pages.dev/ | Same deploy, public, no login |
 
-> First-time enable (needs repo **Admin** once):  
-> GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions**  
-> Then re-run the workflow **Deploy GitHub Pages sandbox**, or push any commit to `main`.
-
-Use production with the team. Use the GitHub Pages sandbox for quick public checks without Access login.
+Both update automatically on every push/merge to `main`. No GitHub Pages setup needed.
 
 ## Use it
 
-1. Open production (or the sandbox)
+1. Open production or the sandbox
 2. Drop a TSV/CSV or paste from Excel
 3. Toggle years, trim to max life, set Y range, edit the title name
 4. Download or copy PNG
@@ -33,12 +29,7 @@ python3 -m http.server 8765
 
 ## Deploy / update
 
-`main` is the single source of truth.
-
-- Every push/merge to `main` deploys **production** to Cloudflare Pages (`cohort-analytics-web`) via GitHub Actions.
-- The same push also refreshes the **GitHub Pages sandbox**.
-
-Cursor, Hermes, and other tools should create a branch and merge into `main`. Do not deploy uncommitted local files directly to production.
+`main` is the single source of truth. GitHub Actions deploys to Cloudflare Pages project `cohort-analytics-web`.
 
 ```bash
 git checkout main
@@ -50,6 +41,6 @@ git commit -m "Describe the update"
 git push -u origin update/short-description
 ```
 
-Open and merge a pull request. Production and sandbox update after the merge.
+Open and merge a pull request. Production (`cohorts.koai.app`) and sandbox (`.pages.dev`) update after the merge.
 
-See `ZERO_TRUST.md` for Cloudflare Access setup.
+See `ZERO_TRUST.md` for Cloudflare Access setup on the production hostname.
