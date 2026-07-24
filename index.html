@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta name="app-build" content="2026-07-24-full-gradient-1-2-years">
+<meta name="app-build" content="2026-07-24-xaxis-fixed-period">
 <title>Stori · Cohort Analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -221,6 +221,13 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
         <div class="bg-row">
           <input type="number" id="yMin" placeholder="Min" step="any" title="Y min (blank = auto)">
           <input type="number" id="yMax" placeholder="Max" step="any" title="Y max (blank = auto)">
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">X-axis range (MOB)</span>
+        <div class="bg-row">
+          <input type="number" id="xMin" placeholder="Min" min="1" step="1" title="First MOB (blank = 1). Stays fixed when filtering years.">
+          <input type="number" id="xMax" placeholder="Max" min="1" step="1" title="Last MOB (blank = full data max). Stays fixed when filtering years.">
         </div>
       </div>
       <div class="check-group">
@@ -970,7 +977,7 @@ document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click',
   draw();
 }));
 
-['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'showEndDots', 'showEndLabels', 'legendStyle', 'yLabel', 'yMin', 'yMax', 'trimLife', 'makeCumul'].forEach(id => {
+['fmtSel', 'showLegend', 'showAxes', 'showGrid', 'showPoints', 'showEndDots', 'showEndLabels', 'legendStyle', 'yLabel', 'yMin', 'yMax', 'xMin', 'xMax', 'trimLife', 'makeCumul'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     if (id === 'trimLife' || id === 'makeCumul') updateMOB();
     if (id === 'makeCumul') {
@@ -980,7 +987,7 @@ document.querySelectorAll('.ctype').forEach(btn => btn.addEventListener('click',
     draw();
   });
   document.getElementById(id).addEventListener('input', () => {
-    if (id === 'yLabel' || id === 'yMin' || id === 'yMax') draw();
+    if (id === 'yLabel' || id === 'yMin' || id === 'yMax' || id === 'xMin' || id === 'xMax') draw();
   });
 });
 
@@ -1316,12 +1323,41 @@ function computeData() {
   let labels = [];
 
   if (S.view === 'cohort') {
-    let mx = 0;
+    // Visible data length (may be short for young years like 2026)
+    let visibleMx = 0;
     groups.forEach(({ list }) => {
       const a = stripTail(avgVals(list));
-      if (a.length > mx) mx = a.length;
+      if (a.length > visibleMx) visibleMx = a.length;
     });
-    labels = Array.from({ length: mx }, (_, i) => i + 1);
+    if (!visibleMx) return null;
+
+    // Full-database MOB span — keeps X stable when year filters change
+    let fullMx = 0;
+    groupCohorts(metricCohorts(false)).forEach(({ list }) => {
+      const a = stripTail(avgVals(list));
+      if (a.length > fullMx) fullMx = a.length;
+    });
+    const autoMx = Math.max(visibleMx, fullMx);
+
+    const xMinRaw = document.getElementById('xMin').value.trim();
+    const xMaxRaw = document.getElementById('xMax').value.trim();
+    const hasMin = xMinRaw !== '';
+    const hasMax = xMaxRaw !== '';
+    let xLo = hasMin ? Math.floor(Number(xMinRaw)) : 1;
+    let xHi = hasMax ? Math.floor(Number(xMaxRaw)) : autoMx;
+    if (!Number.isFinite(xLo)) xLo = 1;
+    if (!Number.isFinite(xHi)) xHi = autoMx;
+    xLo = Math.max(1, xLo);
+    xHi = Math.max(1, Math.min(xHi, 360));
+    // Honor the user's window even if the selected year has fewer points
+    if (!hasMax) xHi = autoMx;
+    if (xHi < xLo) {
+      const tmp = xLo;
+      xLo = xHi;
+      xHi = tmp;
+    }
+
+    labels = Array.from({ length: xHi - xLo + 1 }, (_, i) => xLo + i);
     datasets = groups.map(({ key, list }) => {
       const avg = stripTail(avgVals(list));
       const { s, a, t } = scale.forKey(key);
