@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta name="app-build" content="2026-07-23-title-suffix-selected-years">
+<meta name="app-build" content="2026-07-24-full-gradient-1-2-years">
 <title>Stori · Cohort Analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -750,11 +750,18 @@ function getCohorts() {
   return metricCohorts(true);
 }
 
-/** Color / legend positions locked to full database — not the year filter. */
+/**
+ * Colors:
+ * - 1–2 years selected → remap visible series across the full light→dark gradient
+ * - 3+ years → keep positions locked to the full database (stable while filtering)
+ */
 function colorScale() {
-  const allGroups = groupCohorts(metricCohorts(false));
-  const n = Math.max(allGroups.length, 1);
-  const indexByKey = new Map(allGroups.map((g, i) => [g.key, i]));
+  const stretchToFullGradient = S.years.size > 0 && S.years.size <= 2;
+  // When stretching, color only the filtered cohorts so they span min→max teal.
+  // Otherwise lock colors to the full database order.
+  const basis = groupCohorts(metricCohorts(stretchToFullGradient));
+  const n = Math.max(basis.length, 1);
+  const indexByKey = new Map(basis.map((g, i) => [g.key, i]));
   return {
     n,
     forKey(key) {
