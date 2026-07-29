@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta name="app-build" content="2026-07-24-xaxis-fixed-period">
+<meta name="app-build" content="2026-07-29-zeros-span-favicon">
 <title>Stori · Cohort Analytics</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -150,7 +153,7 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
       <div id="mobSec" style="display:none;">
         <div style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:4px;">Month on book</div>
         <div class="mob-row">
-          <input type="range" id="mobRange" min="1" max="24" value="12" step="1">
+          <input type="range" id="mobRange" min="0" max="24" value="12" step="1">
           <span id="mobVal" class="mob-val">12</span>
         </div>
       </div>
@@ -226,8 +229,8 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
       <div class="field">
         <span class="field-label">X-axis range (MOB)</span>
         <div class="bg-row">
-          <input type="number" id="xMin" placeholder="Min" min="1" step="1" title="First MOB (blank = 1). Stays fixed when filtering years.">
-          <input type="number" id="xMax" placeholder="Max" min="1" step="1" title="Last MOB (blank = full data max). Stays fixed when filtering years.">
+          <input type="number" id="xMin" placeholder="Min" min="0" step="1" title="First MOB (blank = 1). Stays fixed when filtering years.">
+          <input type="number" id="xMax" placeholder="Max" min="0" step="1" title="Last MOB (blank = full data max). Stays fixed when filtering years.">
         </div>
       </div>
       <div class="check-group">
@@ -354,16 +357,32 @@ function parseCell(v) {
   const raw = String(v).trim().replace(/^"|"$/g, '');
   if (raw === '') return { n: null, pct: false };
   const pct = raw.includes('%');
-  // Strip currency symbols and thousand separators
-  const x = raw.replace(/%/g, '').replace(/[$\s]/g, '').replace(/,/g, '');
-  const n = parseFloat(x);
+  let x = raw.replace(/%/g, "").replace(/[$\s]/g, "").replace(/,/g, "");
+  const parenNeg = /^\([\d.]+\)$/.test(x);
+  if (parenNeg) x = x.slice(1, -1);
+  let n = parseFloat(x);
+  if (parenNeg && Number.isFinite(n)) n = -n;
   return { n: Number.isFinite(n) ? n : null, pct };
+}
+
+function mobBaseFromHeaderCols(cols) {
+  const nums = [];
+  for (const c of cols) {
+    const x = String(c).trim().replace(/^"|"$/g, "");
+    if (x === '') continue;
+    const n = parseInt(x, 10);
+    if (!Number.isFinite(n) || String(n) !== x) continue;
+    nums.push(n);
+  }
+  if (!nums.length) return null;
+  return nums[0] === 0 ? 0 : 1;
 }
 
 function parseFile(text) {
   const delim = detectDelim(text);
   const lines = text.split('\n').map(l => l.trimEnd());
   const secs = {};
+  const mobBases = {};
   let cur = 'Data';
   let hasPct = false;
   for (const line of lines) {
@@ -375,6 +394,8 @@ function parseFile(text) {
       // Metric / section headers (e.g. "DQ 90+\t1\t2\t3" or "Gross Profit\t1\t2")
       cur = f;
       if (!secs[cur]) secs[cur] = {};
+      const base = mobBaseFromHeaderCols(pts.slice(1));
+      if (base !== null) mobBases[cur] = base;
       continue;
     }
     if (!secs[cur]) secs[cur] = {};
@@ -389,7 +410,7 @@ function parseFile(text) {
   for (const k of Object.keys(secs)) {
     if (!Object.keys(secs[k]).length) delete secs[k];
   }
-  return { secs, hasPct };
+  return { secs, hasPct, mobBases };
 }
 
 function colorFor(i, n) {
@@ -519,12 +540,12 @@ fi.addEventListener('change', () => { [...fi.files].forEach(loadF); fi.value = '
 
 function loadText(name, text) {
   const cleaned = String(text || '').replace(/^\uFEFF/, '');
-  const { secs, hasPct } = parseFile(cleaned);
+  const { secs, hasPct, mobBases } = parseFile(cleaned);
   if (!Object.keys(secs).length) {
     alert('No cohort data found.\n\nExpected rows like "Jun-24" with numeric values in columns.');
     return false;
   }
-  S.files.push({ name, secs, hasPct });
+  S.files.push({ name, secs, hasPct, mobBases: mobBases || {} });
   S.nameManual = false;
   S.asOfManual = false;
   refresh();
@@ -611,7 +632,8 @@ function metricToTsv(filterYears) {
   const maxLen = Math.max(0, ...rows.map(([, v]) => observedLen(v)));
   if (!maxLen) return null;
   const header = [S.metric === 'Data' ? displayMetric() : S.metric];
-  for (let i = 1; i <= maxLen; i++) header.push(String(i));
+  const mobBase = getMobBase();
+  for (let i = 0; i < maxLen; i++) header.push(String(mobBase + i));
   const lines = [header.join('\t')];
   const fmt = activeFmt();
   for (const [c, vals] of rows) {
@@ -716,6 +738,26 @@ function anyHasPct() {
   return S.files.some(f => f.hasPct);
 }
 
+function getMobBase() {
+  if (!S.metric) return 1;
+  for (const f of S.files) {
+    if (f.mobBases && Object.prototype.hasOwnProperty.call(f.mobBases, S.metric)) {
+      return f.mobBases[S.metric];
+    }
+  }
+  return 1;
+}
+
+function mobToIndex(mob) {
+  return mob - getMobBase();
+}
+
+function maxMobFromLen(len) {
+  const base = getMobBase();
+  if (!len || len < 1) return base;
+  return base + len - 1;
+}
+
 function rebuildMetrics() {
   const secs = allSecs();
   const keys = Object.keys(secs);
@@ -815,7 +857,7 @@ function maxLifeFor(cohort, asOf) {
 function observedLen(vals) {
   const v = [...vals];
   // Drop trailing empty / zero
-  while (v.length && (v[v.length - 1] === null || v[v.length - 1] === undefined || Number.isNaN(v[v.length - 1]) || v[v.length - 1] === 0)) {
+  while (v.length && (v[v.length - 1] === null || v[v.length - 1] === undefined || Number.isNaN(v[v.length - 1]) || v[v.length - 1] === undefined || Number.isNaN(v[v.length - 1]))) {
     v.pop();
   }
   // Drop flat padded tails (source repeats last real value) — common in statement matrices
@@ -951,8 +993,10 @@ function updateMOB() {
     : [1];
   const mx = Math.max(...lengths);
   const r = document.getElementById('mobRange');
-  r.max = mx;
-  S.mob = Math.min(S.mob, mx);
+  const base = getMobBase();
+  r.min = base;
+  r.max = maxMobFromLen(mx);
+  S.mob = Math.max(base, Math.min(S.mob, maxMobFromLen(mx)));
   r.value = S.mob;
   document.getElementById('mobVal').textContent = S.mob;
 }
@@ -1021,7 +1065,7 @@ document.getElementById('bgMode').addEventListener('change', () => {
 
 function stripTail(arr) {
   const v = [...arr];
-  while (v.length && (v[v.length - 1] === null || v[v.length - 1] === 0)) v.pop();
+  while (v.length && (v[v.length - 1] === null || v[v.length - 1] === undefined || Number.isNaN(v[v.length - 1]))) v.pop();
   return v;
 }
 
@@ -1337,18 +1381,19 @@ function computeData() {
       const a = stripTail(avgVals(list));
       if (a.length > fullMx) fullMx = a.length;
     });
-    const autoMx = Math.max(visibleMx, fullMx);
+    const autoMx = maxMobFromLen(Math.max(visibleMx, fullMx));
 
     const xMinRaw = document.getElementById('xMin').value.trim();
     const xMaxRaw = document.getElementById('xMax').value.trim();
     const hasMin = xMinRaw !== '';
     const hasMax = xMaxRaw !== '';
-    let xLo = hasMin ? Math.floor(Number(xMinRaw)) : 1;
+    const mobBase = getMobBase();
+    let xLo = hasMin ? Math.floor(Number(xMinRaw)) : mobBase;
     let xHi = hasMax ? Math.floor(Number(xMaxRaw)) : autoMx;
-    if (!Number.isFinite(xLo)) xLo = 1;
+    if (!Number.isFinite(xLo)) xLo = mobBase;
     if (!Number.isFinite(xHi)) xHi = autoMx;
-    xLo = Math.max(1, xLo);
-    xHi = Math.max(1, Math.min(xHi, 360));
+    xLo = Math.max(mobBase, xLo);
+    xHi = Math.max(mobBase, Math.min(xHi, 360));
     // Honor the user's window even if the selected year has fewer points
     if (!hasMax) xHi = autoMx;
     if (xHi < xLo) {
@@ -1361,7 +1406,10 @@ function computeData() {
     datasets = groups.map(({ key, list }) => {
       const avg = stripTail(avgVals(list));
       const { s, a, t } = scale.forKey(key);
-      const data = labels.map(l => (avg[l - 1] !== undefined ? avg[l - 1] : null));
+      const data = labels.map(l => {
+        const idx = mobToIndex(l);
+        return idx >= 0 && avg[idx] !== undefined ? avg[idx] : null;
+      });
       const last = lastValidIndex(data);
       const radii = data.map((_, idx) => {
         if (S.ctype === 'scatter' || showPts) return 5;
@@ -1381,14 +1429,15 @@ function computeData() {
         pointBorderWidth: 0,
         fill: S.ctype === 'area',
         tension: 0.15,
-        spanGaps: false,
+        spanGaps: true,
       };
     });
   } else {
     labels = groups.map(({ key }) => labelFor(key));
     const vals = groups.map(({ list }) => {
       const a = avgVals(list);
-      return a[S.mob - 1] !== undefined ? a[S.mob - 1] : null;
+      const idx = mobToIndex(S.mob);
+      return idx >= 0 && a[idx] !== undefined ? a[idx] : null;
     });
     const colors = groups.map(({ key }) => scale.forKey(key).s);
     datasets = [{
