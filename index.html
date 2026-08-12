@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta name="app-build" content="2026-07-30-favicon-transparent">
+<meta name="app-build" content="2026-08-12-paste-fix">
 <title>Stori · Cohort Analytics</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -322,10 +322,20 @@ const S = {
   asOfManual: false,
 };
 
-function isCL(s) {
-  if (!s || !s.includes('-')) return false;
+function parseVintageLabel(s) {
+  if (!s || !s.includes('-')) return null;
   const p = s.split('-');
-  return p.length === 2 && MO[p[0]] !== undefined && /^\d{2}$/.test(p[1]);
+  if (p.length !== 2) return null;
+  const monthKey = MN.find(m => m.toLowerCase() === p[0].trim().toLowerCase());
+  if (!monthKey) return null;
+  const yRaw = p[1].trim();
+  if (!/^\d{2}$/.test(yRaw) && !/^\d{4}$/.test(yRaw)) return null;
+  const yr = yRaw.length === 2 ? 2000 + parseInt(yRaw, 10) : parseInt(yRaw, 10);
+  return { monthKey, c: yr * 100 + MO[monthKey] };
+}
+
+function isCL(s) {
+  return parseVintageLabel(s) !== null;
 }
 
 function splitLine(line, delim) {
@@ -350,7 +360,10 @@ function detectDelim(text) {
   if (/\d,\d{3}/.test(sample)) return 'ws';
   const tabs = (sample.match(/\t/g) || []).length;
   const commas = (sample.match(/,/g) || []).length;
-  return tabs >= commas ? '\t' : ',';
+  if (commas > tabs) return ',';
+  // Space-separated rows (no tabs/commas) — e.g. copied from some web tables
+  if (sample.split('\n').some(l => parseVintageLabel(l.trim().split(/\s+/)[0]))) return 'ws';
+  return '\t';
 }
 
 function parseCell(v) {
@@ -399,9 +412,9 @@ function parseFile(text) {
       continue;
     }
     if (!secs[cur]) secs[cur] = {};
-    const [m, y] = f.split('-');
-    const c = (2000 + parseInt(y, 10)) * 100 + MO[m];
-    secs[cur][c] = pts.slice(1).map(v => {
+    const vintage = parseVintageLabel(f);
+    if (!vintage) continue;
+    secs[cur][vintage.c] = pts.slice(1).map(v => {
       const { n, pct } = parseCell(v);
       if (pct) hasPct = true;
       return n;
@@ -538,18 +551,38 @@ dz.addEventListener('drop', e => {
 });
 fi.addEventListener('change', () => { [...fi.files].forEach(loadF); fi.value = ''; });
 
-function loadText(name, text) {
+function resetChartInputs() {
+  for (const id of ['xMin', 'xMax', 'yMin', 'yMax']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+}
+
+function loadText(name, text, opts) {
   const cleaned = String(text || '').replace(/^\uFEFF/, '');
   const { secs, hasPct, mobBases } = parseFile(cleaned);
   if (!Object.keys(secs).length) {
     alert('No cohort data found.\n\nExpected rows like "Jun-24" with numeric values in columns.');
     return false;
   }
+  if (opts && opts.replace) {
+    S.files = [];
+    S.years = new Set();
+  }
   S.files.push({ name, secs, hasPct, mobBases: mobBases || {} });
   S.nameManual = false;
   S.asOfManual = false;
+  resetChartInputs();
   refresh();
   return true;
+}
+
+function pasteName() {
+  return `Pasted ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function loadPastedText(text) {
+  return loadText(pasteName(), text, { replace: true });
 }
 
 function loadF(file) {
@@ -573,8 +606,7 @@ document.getElementById('pasteLoad').addEventListener('click', () => {
     alert('Paste some cohort rows first (from Excel or a TSV).');
     return;
   }
-  const name = `Pasted ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  if (loadText(name, text)) {
+  if (loadPastedText(text)) {
     pasteArea.value = '';
     pastePanel.classList.remove('open');
   }
@@ -587,6 +619,11 @@ document.getElementById('pasteFromClip').addEventListener('click', async () => {
       alert('Clipboard is empty.');
       return;
     }
+    if (loadPastedText(text)) {
+      pasteArea.value = '';
+      pastePanel.classList.remove('open');
+      return;
+    }
     pasteArea.value = text;
     pastePanel.classList.add('open');
     pasteArea.focus();
@@ -594,6 +631,16 @@ document.getElementById('pasteFromClip').addEventListener('click', async () => {
     pastePanel.classList.add('open');
     pasteArea.focus();
     alert('Could not read clipboard automatically. Paste into the box with Cmd/Ctrl+V, then click Load.');
+  }
+});
+
+pasteArea.addEventListener('paste', e => {
+  const text = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (!looksLikeCohortPaste(text)) return;
+  e.preventDefault();
+  if (loadPastedText(text)) {
+    pasteArea.value = '';
+    pastePanel.classList.remove('open');
   }
 });
 
@@ -609,13 +656,14 @@ function looksLikeCohortPaste(text) {
 }
 
 document.addEventListener('paste', e => {
-  const tag = (e.target && e.target.tagName || '').toLowerCase();
-  if (tag === 'textarea' || tag === 'input') return;
+  const target = e.target;
+  const tag = (target && target.tagName || '').toLowerCase();
   const text = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (target === pasteArea) return; // handled on pasteArea
+  if (tag === 'textarea' || tag === 'input') return;
   if (!looksLikeCohortPaste(text)) return;
   e.preventDefault();
-  const name = `Pasted ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  loadText(name, text);
+  loadPastedText(text);
 });
 
 function metricToTsv(filterYears) {
@@ -873,19 +921,7 @@ function inferAsOfFromMetric() {
   const entries = Object.entries(secs[S.metric]);
   if (!entries.length) return null;
 
-  // If every cohort is padded to the same width (full statement matrix),
-  // as-of is simply the newest vintage month.
-  const rawLens = entries.map(([, vals]) => {
-    let n = vals.length;
-    while (n > 0 && (vals[n - 1] === null || vals[n - 1] === undefined || Number.isNaN(vals[n - 1]))) n--;
-    return n;
-  }).filter(n => n > 0);
-  const allSamePad = rawLens.length > 1 && rawLens.every(n => n === rawLens[0]);
-  if (allSamePad) {
-    const newest = Math.max(...entries.map(([c]) => parseInt(c, 10)));
-    return newest;
-  }
-
+  // Infer as-of from the latest calendar month any cohort could have reached.
   let maxIdx = 0;
   for (const [ck, vals] of entries) {
     const c = parseInt(ck, 10);
