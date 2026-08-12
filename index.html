@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<meta name="app-build" content="2026-08-12-paste-fix">
+<meta name="app-build" content="2026-08-12-paste-fix-2">
 <title>Stori · Cohort Analytics</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="assets/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -72,7 +72,8 @@ input[type=color]{padding:2px;height:30px;cursor:pointer;}
 .title-row input{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--p);border-color:transparent;background:transparent;padding:4px 6px;}
 .title-row input:hover,.title-row input:focus{border-color:var(--border);background:var(--surf);}
 .title-suffix{flex-shrink:0;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;padding-right:4px;}
-.canvas-wrap{flex:1;min-height:0;position:relative;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:8px;}
+.canvas-wrap{flex:1;min-height:240px;position:relative;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:8px;}
+.canvas-wrap canvas{display:block;width:100% !important;height:100% !important;}
 .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:var(--muted);}
 .empty h3{font-size:14px;font-weight:600;color:var(--ink);}
 .empty p{font-size:12px;text-align:center;max-width:280px;line-height:1.5;}
@@ -353,7 +354,7 @@ function splitLine(line, delim) {
 }
 
 function detectDelim(text) {
-  const sample = text.split('\n').filter(l => l.trim()).slice(0, 8).join('\n');
+  const sample = text.split(/\r\n|\r|\n/).filter(l => l.trim()).slice(0, 8).join('\n');
   // Prefer tabs whenever present. Never let thousand separators (86,740,300)
   // outvote tabs and break the paste.
   if (sample.includes('\t')) return '\t';
@@ -393,7 +394,8 @@ function mobBaseFromHeaderCols(cols) {
 
 function parseFile(text) {
   const delim = detectDelim(text);
-  const lines = text.split('\n').map(l => l.trimEnd());
+  // Excel / Sheets can use \r, \n, or \r\n — never treat the whole paste as one line.
+  const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').map(l => l.trimEnd());
   const secs = {};
   const mobBases = {};
   let cur = 'Data';
@@ -574,6 +576,11 @@ function loadText(name, text, opts) {
   S.asOfManual = false;
   resetChartInputs();
   refresh();
+  // Parse can succeed with header-only / all-null rows — surface that instead of a blank screen.
+  if (!computeData()) {
+    alert('Cohort rows were found, but every series is empty after filters/as-of trim.\n\nTry unchecking "Trim to max life", or paste rows with numeric MOB columns.');
+    return false;
+  }
   return true;
 }
 
@@ -637,8 +644,9 @@ document.getElementById('pasteFromClip').addEventListener('click', async () => {
 pasteArea.addEventListener('paste', e => {
   const text = e.clipboardData && e.clipboardData.getData('text/plain');
   if (!looksLikeCohortPaste(text)) return;
-  e.preventDefault();
+  // Only consume the paste if load succeeds — otherwise leave text in the box.
   if (loadPastedText(text)) {
+    e.preventDefault();
     pasteArea.value = '';
     pastePanel.classList.remove('open');
   }
@@ -646,11 +654,13 @@ pasteArea.addEventListener('paste', e => {
 
 function looksLikeCohortPaste(text) {
   if (!text || text.length < 8) return false;
-  const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 12);
+  const lines = text.split(/\r\n|\r|\n/).filter(l => l.trim()).slice(0, 12);
   let hits = 0;
   for (const line of lines) {
+    // Tab/CSV first — also try whitespace so space-separated pastes auto-load.
     const first = line.split(/\t|,/)[0].trim().replace(/^"|"$/g, '');
-    if (isCL(first)) hits += 1;
+    const firstWs = line.trim().split(/\s+/)[0].replace(/^"|"$/g, '');
+    if (isCL(first) || isCL(firstWs)) hits += 1;
   }
   return hits >= 1;
 }
@@ -1438,12 +1448,12 @@ function computeData() {
       xHi = tmp;
     }
 
-    labels = Array.from({ length: xHi - xLo + 1 }, (_, i) => xLo + i);
+    labels = Array.from({ length: xHi - xLo + 1 }, (_, i) => String(xLo + i));
     datasets = groups.map(({ key, list }) => {
       const avg = stripTail(avgVals(list));
       const { s, a, t } = scale.forKey(key);
       const data = labels.map(l => {
-        const idx = mobToIndex(l);
+        const idx = mobToIndex(Number(l));
         return idx >= 0 && avg[idx] !== undefined ? avg[idx] : null;
       });
       const last = lastValidIndex(data);
@@ -1498,6 +1508,12 @@ function draw() {
     ca.style.display = 'none';
     return;
   }
+  if (typeof Chart === 'undefined') {
+    em.style.display = 'flex';
+    ca.style.display = 'none';
+    alert('Chart library failed to load. Hard-refresh the page (Cmd/Ctrl+Shift+R).');
+    return;
+  }
   const { labels, datasets, cohorts, groups } = result;
   em.style.display = 'none';
   ca.style.display = 'flex';
@@ -1524,8 +1540,22 @@ function draw() {
       ? `<span style="color:var(--border);padding:0 2px;">·</span><span style="font-size:11px;color:var(--muted);">as of EOM ${formatAsOf(S.asOf)}</span>`
       : '');
 
-  if (S.chart) { S.chart.destroy(); S.chart = null; }
-  S.chart = new Chart(document.getElementById('cvs'), buildCfg(labels, datasets, true));
+  const mount = () => {
+    try {
+      if (S.chart) { S.chart.destroy(); S.chart = null; }
+      const cvs = document.getElementById('cvs');
+      S.chart = new Chart(cvs, buildCfg(labels, datasets, true));
+      // Parent was display:none → flex; force a layout pass so the canvas isn't 0×0.
+      if (S.chart && typeof S.chart.resize === 'function') S.chart.resize();
+    } catch (err) {
+      em.style.display = 'flex';
+      ca.style.display = 'none';
+      console.error(err);
+      alert('Could not draw chart: ' + (err && err.message ? err.message : String(err)));
+    }
+  };
+  // Wait one frame so flex layout assigns height before Chart.js measures the canvas.
+  requestAnimationFrame(() => requestAnimationFrame(mount));
 }
 
 function exportBg() {
